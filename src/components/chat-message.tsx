@@ -1,8 +1,8 @@
+import type { Message } from "@ai-sdk/react";
 import ReactMarkdown, { type Components } from "react-markdown";
 
 interface ChatMessageProps {
-  text: string;
-  role: string;
+  message: Message;
   userName: string;
 }
 
@@ -38,22 +38,43 @@ const Markdown = ({ children }: { children: string }) => {
   return <ReactMarkdown components={components}>{children}</ReactMarkdown>;
 };
 
-export const ChatMessage = ({ text, role, userName }: ChatMessageProps) => {
-  const isAI = role === "assistant";
+export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
+  const isAI = message.role === "assistant";
 
   return (
     <div className="mb-6">
       <div
-        className={`rounded-lg p-4 ${
-          isAI ? "bg-gray-800 text-gray-300" : "bg-gray-900 text-gray-300"
-        }`}
+        className={`rounded-lg p-4 ${isAI ? "bg-gray-800 text-gray-300" : "bg-gray-900 text-gray-300"
+          }`}
       >
         <p className="mb-2 text-sm font-semibold text-gray-400">
           {isAI ? "AI" : userName}
         </p>
 
         <div className="prose prose-invert max-w-none">
-          <Markdown>{text}</Markdown>
+          {message.parts && message.parts.length > 0 ? (
+            // Render message parts for tool calls and other structured content
+            message.parts.map((part: any, index: number) => {
+              if (part.type === "text") {
+                return <Markdown key={index}>{part.text}</Markdown>;
+              } else if (part.type === "tool-invocation") {
+                return (
+                  <div key={index} className="mb-2 rounded bg-gray-700 p-2">
+                    <p className="text-sm text-gray-400">
+                      🔧 Using tool: {part.toolInvocation.toolName}
+                    </p>
+                    <pre className="mt-1 text-xs text-gray-500">
+                      {JSON.stringify(part.toolInvocation.args, null, 2)}
+                    </pre>
+                  </div>
+                );
+              }
+              return null;
+            })
+          ) : (
+            // Fallback to content for backwards compatibility
+            <Markdown>{message.content}</Markdown>
+          )}
         </div>
       </div>
     </div>

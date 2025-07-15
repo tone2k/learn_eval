@@ -1,6 +1,6 @@
 "use client";
 
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 import { Square } from "lucide-react";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
@@ -30,8 +30,7 @@ export const ChatPage = ({ userName }: ChatProps) => {
             messages.map((message) => (
               <ChatMessage
                 key={message.id}
-                text={message.content}
-                role={message.role}
+                message={message}
                 userName={userName}
               />
             ))
@@ -66,7 +65,7 @@ export const ChatPage = ({ userName }: ChatProps) => {
         </div>
       </div>
 
-      <SignInModal isOpen={false} onClose={() => {}} />
+      <SignInModal isOpen={false} onClose={() => { }} />
     </>
   );
 };

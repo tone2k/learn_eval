@@ -17,7 +17,7 @@ export const env = createEnv({
       .enum(["development", "test", "production"])
       .default("development"),
     GOOGLE_GENERATIVE_AI_API_KEY: z.string(),
-    SERPER_API_KEY: z.string().optional(),
+    SERPER_API_KEY: z.string(),
   },
 
   /**
