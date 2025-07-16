@@ -21,4 +21,18 @@ export function sanitizeTitle(content: string): string {
   // Extract first line and clean it up for use as a title
   const firstLine = content.split('\n')[0];
   return truncateText(firstLine?.trim() || "New Chat", 50);
+}
+
+export function isNewChatCreated(
+  data: unknown,
+): data is {
+  type: "NEW_CHAT_CREATED";
+  chatId: string;
+} {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "type" in data &&
+    data.type === "NEW_CHAT_CREATED"
+  );
 } 

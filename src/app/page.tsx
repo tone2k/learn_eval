@@ -1,8 +1,8 @@
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { auth } from "~/server/auth/index.ts";
-import { ChatPage } from "./chat.tsx";
 import { AuthButton } from "../components/auth-button.tsx";
+import { ChatPage } from "./chat.tsx";
 
 const chats = [
   {
@@ -13,8 +13,13 @@ const chats = [
 
 const activeChatId = "1";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>;
+}) {
   const session = await auth();
+  const { id } = await searchParams;
   const userName = session?.user?.name ?? "Guest";
   const isAuthenticated = !!session?.user;
 
@@ -68,7 +73,7 @@ export default async function HomePage() {
         </div>
       </div>
 
-      <ChatPage userName={userName} />
+      <ChatPage userName={userName} chatId={id} />
     </div>
   );
 }
