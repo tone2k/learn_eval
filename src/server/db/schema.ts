@@ -1,18 +1,17 @@
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
-  index,
-  integer,
-  pgTableCreator,
-  primaryKey,
-  text,
-  timestamp,
-  varchar,
-  json,
-  boolean,
-  serial,
+    boolean,
+    index,
+    integer,
+    json,
+    pgTableCreator,
+    primaryKey,
+    text,
+    timestamp,
+    varchar
 } from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
-import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -39,6 +38,7 @@ export const users = createTable("user", {
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
+  chats: many(chats),
 }));
 
 export const accounts = createTable(
@@ -93,8 +93,73 @@ export const sessions = createTable(
   }),
 );
 
+export const chats = createTable(
+  "chat",
+  {
+    id: varchar("id", { length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    title: varchar("title", { length: 500 }).notNull(),
+    userId: varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (chat) => ({
+    userIdIdx: index("chat_user_id_idx").on(chat.userId),
+  }),
+);
+
+export const messages = createTable(
+  "message",
+  {
+    id: varchar("id", { length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    chatId: varchar("chat_id", { length: 255 })
+      .notNull()
+      .references(() => chats.id),
+    role: varchar("role", { length: 50 }).notNull(),
+    content: text("content").notNull(),
+    parts: json("parts"),
+    order: integer("order").notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (message) => ({
+    chatIdIdx: index("message_chat_id_idx").on(message.chatId),
+    orderIdx: index("message_order_idx").on(message.order),
+  }),
+);
+
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const chatsRelations = relations(chats, ({ one, many }) => ({
+  user: one(users, { fields: [chats.userId], references: [users.id] }),
+  messages: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),
 }));
 
 export const verificationTokens = createTable(
@@ -126,4 +191,10 @@ export declare namespace DB {
   export type NewVerificationToken = InferInsertModel<
     typeof verificationTokens
   >;
+
+  export type Chat = InferSelectModel<typeof chats>;
+  export type NewChat = InferInsertModel<typeof chats>;
+
+  export type Message = InferSelectModel<typeof messages>;
+  export type NewMessage = InferInsertModel<typeof messages>;
 }

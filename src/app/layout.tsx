@@ -2,18 +2,26 @@ import "~/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
+import { SessionProviderWrapper } from "~/components/session-provider";
+import { auth } from "~/server/auth";
 
 export const metadata: Metadata = {
   title: "AI App Example",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const session = await auth();
+  
   return (
     <html lang="en" className={`${GeistSans.variable}`}>
-      <body>{children}</body>
+      <body>
+        <SessionProviderWrapper session={session}>
+          {children}
+        </SessionProviderWrapper>
+      </body>
     </html>
   );
 }
