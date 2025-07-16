@@ -11,7 +11,7 @@ import { isNewChatCreated } from "~/utils";
 
 interface ChatProps {
   userName: string;
-  chatId?: string;
+  chatId: string | undefined;
 }
 
 export const ChatPage = ({ userName, chatId }: ChatProps) => {

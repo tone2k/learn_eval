@@ -6,6 +6,52 @@ import { searchSerper } from "~/serper";
 import { auth } from "~/server/auth";
 import { getChat, upsertChat } from "~/server/db/queries";
 
+// Helper function to transform database message format to AI SDK format
+function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
+  console.log(`🔍 Message ${index}:`, {
+    id: msg.id,
+    role: msg.role,
+    contentType: typeof msg.content,
+    content: msg.content,
+    createdAt: msg.createdAt,
+  });
+
+  // Transform the database content format to proper AI SDK format
+  let transformedMessage: any = {
+    id: msg.id,
+    role: msg.role,
+    createdAt: msg.createdAt,
+  };
+
+  // Handle content transformation
+  if (Array.isArray(msg.content)) {
+    // Content is stored as array of parts
+    const textParts = msg.content.filter((part: any) => part.type === "text");
+    const hasNonTextParts = msg.content.some((part: any) => part.type !== "text");
+
+    if (hasNonTextParts || textParts.length > 1) {
+      // Complex message with multiple parts or non-text parts - use parts format
+      transformedMessage.parts = msg.content;
+      transformedMessage.content = ""; // AI SDK expects content to be present
+    } else if (textParts.length === 1) {
+      // Simple text message - extract the text string
+      transformedMessage.content = textParts[0].text;
+    } else {
+      // Fallback for edge cases
+      transformedMessage.content = "";
+    }
+  } else if (typeof msg.content === "string") {
+    // Content is already a string
+    transformedMessage.content = msg.content;
+  } else {
+    // Fallback for unexpected formats
+    transformedMessage.content = JSON.stringify(msg.content);
+  }
+
+  console.log(`🔍 Transformed message ${index}:`, transformedMessage);
+  return transformedMessage as Message;
+}
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -29,50 +75,9 @@ export async function GET(req: Request) {
 
     console.log("🔍 Raw database messages:", JSON.stringify(existingChat.messages, null, 2));
 
-    const messages = existingChat.messages.map((msg, index) => {
-      console.log(`🔍 Message ${index}:`, {
-        id: msg.id,
-        role: msg.role,
-        contentType: typeof msg.content,
-        content: msg.content,
-        createdAt: msg.createdAt,
-      });
-
-      // Transform the database content format to proper AI SDK format
-      let transformedMessage: any = {
-        id: msg.id,
-        role: msg.role,
-        createdAt: msg.createdAt,
-      };
-
-      // Handle content transformation
-      if (Array.isArray(msg.content)) {
-        // Content is stored as array of parts
-        const textParts = msg.content.filter((part: any) => part.type === "text");
-        const hasNonTextParts = msg.content.some((part: any) => part.type !== "text");
-
-        if (hasNonTextParts || textParts.length > 1) {
-          // Complex message with multiple parts or non-text parts - use parts format
-          transformedMessage.parts = msg.content;
-          transformedMessage.content = ""; // AI SDK expects content to be present
-        } else if (textParts.length === 1) {
-          // Simple text message - extract the text string
-          transformedMessage.content = textParts[0].text;
-        } else {
-          // Fallback for edge cases
-          transformedMessage.content = "";
-        }
-      } else if (typeof msg.content === "string") {
-        // Content is already a string
-        transformedMessage.content = msg.content;
-      } else {
-        // Fallback for unexpected formats
-        transformedMessage.content = JSON.stringify(msg.content);
-      }
-
-      console.log(`🔍 Transformed message ${index}:`, transformedMessage);
-      return transformedMessage;
-    });
+    const messages = existingChat.messages.map((msg, index) => 
+      transformDatabaseMessageToAISDK(msg, index)
+    );
 
     console.log("🔍 Processed messages for frontend:", JSON.stringify(messages, null, 2));
 
@@ -137,13 +142,10 @@ export async function POST(req: Request) {
         return new Response("Chat not found", { status: 404 });
       }
       
-      // Get existing messages from database
-      const existingMessages = existingChat.messages.map(msg => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        createdAt: msg.createdAt,
-      })) as Message[];
+      // Transform existing messages from database format to AI SDK format
+      const existingMessages = existingChat.messages.map((msg, index) => 
+        transformDatabaseMessageToAISDK(msg, index)
+      );
       
       // The frontend sends only new messages, so append them to existing ones
       conversationMessages = [...existingMessages, ...messages];
