@@ -1,10 +1,16 @@
 import type { Message } from "ai";
 import { appendResponseMessages, createDataStreamResponse, streamText } from "ai";
+import { Langfuse } from "langfuse";
 import { z } from "zod";
+import { env } from "~/env";
 import { defaultModel } from "~/models";
 import { searchSerper } from "~/serper";
 import { auth } from "~/server/auth";
 import { getChat, upsertChat } from "~/server/db/queries";
+
+const langfuse = new Langfuse({
+  environment: env.NODE_ENV,
+});
 
 // Helper function to transform database message format to AI SDK format
 function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
@@ -112,6 +118,12 @@ export async function POST(req: Request) {
     console.log("📝 Last message:", messages[messages.length - 1]?.content);
     console.log("💬 Chat ID:", chatId);
     console.log("🆕 Is new chat:", isNewChat);
+
+    const trace = langfuse.trace({
+      sessionId: chatId,
+      name: "chat",
+      userId: session.user.id,
+    });
 
     let conversationMessages: Message[] = messages;
 
@@ -225,6 +237,13 @@ INSTRUCTIONS:
 
 The user is asking about current news - USE THE SEARCH TOOL NOW.`,
           tools,
+          experimental_telemetry: {
+            isEnabled: true,
+            functionId: "agent",
+            metadata: {
+              langfuseTraceId: trace.id,
+            },
+          },
           onStepFinish: (step) => {
             console.log("🚀 Step finished:", step.stepType);
             if (step.toolCalls) {
@@ -266,6 +285,9 @@ The user is asking about current news - USE THE SEARCH TOOL NOW.`,
               });
               
               console.log("✅ Chat saved successfully:", chatId);
+
+              // Flush Langfuse trace data
+              await langfuse.flushAsync();
             } catch (error) {
               console.error("❌ Error saving chat:", error);
             }
