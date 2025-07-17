@@ -5,23 +5,26 @@ import type { Message } from "ai";
 import { Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { StickToBottom } from "use-stick-to-bottom";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
 import { isNewChatCreated } from "~/utils";
 
 interface ChatProps {
   userName: string;
-  chatId: string | undefined;
+  chatId: string;
+  isNewChat: boolean;
 }
 
-export const ChatPage = ({ userName, chatId }: ChatProps) => {
+
+export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
   const router = useRouter();
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
-  const [isLoadingChat, setIsLoadingChat] = useState(!!chatId);
+  const [isLoadingChat, setIsLoadingChat] = useState(!isNewChat);
 
-  // Load existing messages when chatId is provided
+  // Load existing messages when it's not a new chat
   useEffect(() => {
-    if (!chatId) {
+    if (isNewChat) {
       setInitialMessages([]);
       setIsLoadingChat(false);
       return;
@@ -60,17 +63,29 @@ export const ChatPage = ({ userName, chatId }: ChatProps) => {
     };
 
     loadExistingMessages();
-  }, [chatId]);
+  }, [chatId, isNewChat]);
 
   const { messages, input, handleInputChange, handleSubmit, status, stop, data } = useChat({
     api: "/api/chat",
     initialMessages,
     body: {
       chatId,
+      isNewChat,
     },
   });
 
   const isLoading = status === "streaming";
+
+  // Log when messages change
+  useEffect(() => {
+    console.log('🔍 Main ChatPage - messages changed:', {
+      chatId,
+      messagesLength: messages.length,
+      isNewChat,
+      isLoading,
+      timestamp: new Date().toISOString()
+    });
+  }, [messages, chatId, isNewChat, isLoading]);
 
   useEffect(() => {
     const lastDataItem = data?.[data.length - 1];
@@ -79,9 +94,17 @@ export const ChatPage = ({ userName, chatId }: ChatProps) => {
       lastDataItem &&
       isNewChatCreated(lastDataItem)
     ) {
-      router.push(`?id=${lastDataItem.chatId}`);
+      router.push(`?chatId=${lastDataItem.chatId}`);
     }
-  }, [data, router]);
+  }, [data, router, isNewChat]);
+
+  // Log component mounting - must be before any conditional returns
+  useEffect(() => {
+    console.log('🔍 ChatPage component mounting/updating with chatId:', chatId);
+    return () => {
+      console.log('🔍 ChatPage component unmounting for chatId:', chatId);
+    };
+  }, [chatId]);
 
   if (isLoadingChat) {
     return (
@@ -97,26 +120,29 @@ export const ChatPage = ({ userName, chatId }: ChatProps) => {
 
   return (
     <>
-      <div className="flex flex-1 flex-col">
-        <div
-          className="mx-auto w-full max-w-[65ch] flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500"
-          role="log"
-          aria-label="Chat messages"
-        >
+      <StickToBottom
+        key={chatId}
+        className="flex flex-1 flex-col [&>div]:scrollbar-thin [&>div]:scrollbar-track-gray-800 [&>div]:scrollbar-thumb-gray-600 [&>div]:hover:scrollbar-thumb-gray-500"
+        resize="smooth"
+        initial="smooth"
+      >
+        <StickToBottom.Content className="mx-auto w-full max-w-[65ch] flex-1 flex flex-col gap-4 p-4">
           {messages.length === 0 ? (
-            <div className="flex h-full items-center justify-center">
+            <div className="flex h-full items-center justify-center py-32">
               <p className="text-gray-500">Start a conversation...</p>
             </div>
           ) : (
-            messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                userName={userName}
-              />
-            ))
+            <>
+              {messages.map((message) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  userName={userName}
+                />
+              ))}
+            </>
           )}
-        </div>
+        </StickToBottom.Content>
 
         <div className="border-t border-gray-700">
           <form
@@ -144,7 +170,7 @@ export const ChatPage = ({ userName, chatId }: ChatProps) => {
             </div>
           </form>
         </div>
-      </div>
+      </StickToBottom>
 
       <SignInModal isOpen={false} onClose={() => undefined} />
     </>

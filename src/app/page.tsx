@@ -1,27 +1,30 @@
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { auth } from "~/server/auth/index.ts";
+import { getChats } from "~/server/db/queries";
 import { AuthButton } from "../components/auth-button.tsx";
 import { ChatPage } from "./chat.tsx";
-
-const chats = [
-  {
-    id: "1",
-    title: "My First Chat",
-  },
-];
-
-const activeChatId = "1";
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>;
+  searchParams: Promise<{ chatId?: string }>;
 }) {
   const session = await auth();
-  const { id } = await searchParams;
+  const { chatId: id } = await searchParams;
   const userName = session?.user?.name ?? "Guest";
   const isAuthenticated = !!session?.user;
+  
+  // Fetch chats for the authenticated user
+  const chats = isAuthenticated && session.user?.id 
+    ? await getChats(session.user.id) 
+    : [];
+
+  // Generate a stable chatId - use the one from URL or create a new one
+  const chatIdFromUrl = id;
+  const activeChatId = chatIdFromUrl; // Use the actual chatId from URL for highlighting
+  const chatId = chatIdFromUrl ?? crypto.randomUUID();
+  const isNewChat = !chatIdFromUrl;
 
   return (
     <div className="flex h-screen bg-gray-950">
@@ -73,7 +76,12 @@ export default async function HomePage({
         </div>
       </div>
 
-      <ChatPage userName={userName} chatId={id} />
+      <ChatPage 
+        key={chatId}
+        userName={userName} 
+        chatId={chatId}
+        isNewChat={isNewChat}
+      />
     </div>
   );
 }

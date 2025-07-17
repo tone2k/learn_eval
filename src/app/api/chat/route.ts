@@ -100,20 +100,19 @@ export async function POST(req: Request) {
 
     const { 
       messages, 
-      chatId 
+      chatId,
+      isNewChat
     }: { 
       messages: Message[]; 
-      chatId?: string 
+      chatId: string;
+      isNewChat: boolean;
     } = await req.json();
     
     console.log("📝 Processing messages:", messages.length);
     console.log("📝 Last message:", messages[messages.length - 1]?.content);
-    console.log("💬 Chat ID:", chatId || "Creating new chat");
+    console.log("💬 Chat ID:", chatId);
+    console.log("🆕 Is new chat:", isNewChat);
 
-    // Generate a new chat ID if none provided
-    const currentChatId = chatId || crypto.randomUUID();
-    const isNewChat = !chatId;
-    
     let conversationMessages: Message[] = messages;
 
     if (isNewChat) {
@@ -123,19 +122,19 @@ export async function POST(req: Request) {
         ? firstUserMessage.content.slice(0, 100) 
         : "New Chat";
       
-      console.log("🆕 Creating new chat:", currentChatId, "with title:", title);
+      console.log("🆕 Creating new chat:", chatId, "with title:", title);
       
       await upsertChat({
         userId: session.user.id!,
-        chatId: currentChatId,
+        chatId: chatId,
         title,
         messages: messages.filter(m => m.role === "user"),
       });
     } else {
       // For existing chats, load the complete conversation history
-      console.log("📖 Loading existing chat:", currentChatId);
+      console.log("📖 Loading existing chat:", chatId);
       
-      const existingChat = await getChat(currentChatId, session.user.id!);
+      const existingChat = await getChat(chatId, session.user.id!);
       
       if (!existingChat) {
         console.log("❌ Chat not found or access denied");
@@ -202,7 +201,7 @@ export async function POST(req: Request) {
         if (isNewChat) {
           dataStream.writeData({
             type: "NEW_CHAT_CREATED",
-            chatId: currentChatId,
+            chatId: chatId,
           });
         }
 
@@ -261,12 +260,12 @@ The user is asking about current news - USE THE SEARCH TOOL NOW.`,
               // Save the complete chat with all messages
               await upsertChat({
                 userId: session.user.id!,
-                chatId: currentChatId,
+                chatId: chatId,
                 title,
                 messages: updatedMessages,
               });
               
-              console.log("✅ Chat saved successfully:", currentChatId);
+              console.log("✅ Chat saved successfully:", chatId);
             } catch (error) {
               console.error("❌ Error saving chat:", error);
             }
