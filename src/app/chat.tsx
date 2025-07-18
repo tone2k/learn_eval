@@ -65,27 +65,76 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
     loadExistingMessages();
   }, [chatId, isNewChat]);
 
-  const { messages, input, handleInputChange, handleSubmit, status, stop, data } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, status, stop, data, error } = useChat({
     api: "/api/chat",
     initialMessages,
     body: {
       chatId,
       isNewChat,
     },
+    onError: (error) => {
+      console.error("🔥 useChat ERROR:", error);
+      console.error("🔥 Error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+    },
+    onResponse: (response) => {
+      console.log("📡 useChat RESPONSE received:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+    },
+    onFinish: (message) => {
+      console.log("🏁 useChat FINISHED:", {
+        messageId: message.id,
+        role: message.role,
+        contentLength: message.content?.length || 0,
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 
   const isLoading = status === "streaming";
 
-  // Log when messages change
+  // Enhanced logging for useChat state changes
   useEffect(() => {
-    console.log('🔍 Main ChatPage - messages changed:', {
+    console.log('🔍 useChat Status Changed:', {
       chatId,
+      status,
       messagesLength: messages.length,
       isNewChat,
       isLoading,
+      hasError: !!error,
+      errorMessage: error?.message,
       timestamp: new Date().toISOString()
     });
-  }, [messages, chatId, isNewChat, isLoading]);
+    
+    if (error) {
+      console.error('🔥 useChat Error Details:', {
+        error,
+        errorType: typeof error,
+        errorConstructor: error.constructor.name
+      });
+    }
+  }, [messages, chatId, isNewChat, isLoading, status, error]);
+
+  // Log when form is submitted
+  const enhancedHandleSubmit = (e: React.FormEvent) => {
+    console.log("📤 FORM SUBMIT:", {
+      inputValue: input,
+      chatId,
+      isNewChat,
+      currentStatus: status,
+      messagesCount: messages.length,
+      timestamp: new Date().toISOString()
+    });
+    
+    return handleSubmit(e);
+  };
 
   useEffect(() => {
     const lastDataItem = data?.[data.length - 1];
@@ -146,7 +195,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
 
         <div className="border-t border-gray-700">
           <form
-            onSubmit={handleSubmit}
+            onSubmit={enhancedHandleSubmit}
             className="mx-auto max-w-[65ch] p-4"
           >
             <div className="flex gap-2">
@@ -161,7 +210,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
               />
               <button
                 type="button"
-                onClick={isLoading ? stop : handleSubmit}
+                onClick={isLoading ? stop : enhancedHandleSubmit}
                 disabled={(isLoading && !input.trim()) || isLoadingChat}
                 className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-600 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:hover:bg-gray-700"
               >
