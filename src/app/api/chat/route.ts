@@ -120,6 +120,7 @@ export async function POST(req: Request) {
     console.log("📝 Last message:", messages[messages.length - 1]?.content);
     console.log("💬 Chat ID:", chatId);
     console.log("🆕 Is new chat:", isNewChat);
+    console.log("🔍 Request body:", { chatId, isNewChat, messageCount: messages.length });
 
     const trace = langfuse.trace({
       name: "chat",
@@ -128,11 +129,11 @@ export async function POST(req: Request) {
 
     let conversationMessages: Message[] = messages;
 
-    if (isNewChat) {
-      // Check if this chat already exists to prevent duplicates
-      const existingChat = await getChat(chatId, session.user.id!);
-      
-      if (!existingChat) {
+    // First, check if this chat already exists in the database
+    const checkExistingChat = await getChat(chatId, session.user.id!);
+    
+    if (isNewChat && !checkExistingChat) {
+      // This is truly a new chat - create it
         // For new chats, create the chat with initial user message(s)
         const firstUserMessage = messages.find(m => m.role === "user");
         const title = typeof firstUserMessage?.content === "string" 
@@ -163,18 +164,8 @@ export async function POST(req: Request) {
             chatId,
           },
         });
-      } else {
-        console.log("⚠️ Chat already exists, treating as existing chat:", chatId);
-        // If chat already exists, treat it as an existing chat
-        // Transform existing messages from database format to AI SDK format
-        const existingMessages = existingChat.messages.map((msg, index) => 
-          transformDatabaseMessageToAISDK(msg, index)
-        );
-        
-        // The frontend sends only new messages, so append them to existing ones
-        conversationMessages = [...existingMessages, ...messages];
-      }
     } else {
+      // This is an existing chat - verify ownership and load messages
       // For existing chats, load the complete conversation history
       console.log("📖 Loading existing chat:", chatId);
       
@@ -186,22 +177,20 @@ export async function POST(req: Request) {
         },
       });
       
-      const existingChat = await getChat(chatId, session.user.id!);
-      
       verifyChatOwnershipSpan.end({
         output: {
-          exists: !!existingChat,
-          belongsToUser: !!existingChat,
+          exists: !!checkExistingChat,
+          belongsToUser: !!checkExistingChat,
         },
       });
       
-      if (!existingChat) {
+      if (!checkExistingChat) {
         console.log("❌ Chat not found or access denied");
         return new Response("Chat not found", { status: 404 });
       }
       
       // Transform existing messages from database format to AI SDK format
-      const existingMessages = existingChat.messages.map((msg, index) => 
+      const existingMessages = checkExistingChat.messages.map((msg, index) => 
         transformDatabaseMessageToAISDK(msg, index)
       );
       
