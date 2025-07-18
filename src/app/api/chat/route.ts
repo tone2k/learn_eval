@@ -7,6 +7,8 @@ import { defaultModel } from "~/models";
 import { searchSerper } from "~/serper";
 import { auth } from "~/server/auth";
 import { getChat, upsertChat } from "~/server/db/queries";
+import { bulkCrawlWebsites } from "~/server/tools/crawler";
+import { cacheWithRedis } from "~/server/redis/redis";
 
 const langfuse = new Langfuse({
   environment: env.NODE_ENV,
@@ -165,6 +167,12 @@ export async function POST(req: Request) {
       console.log("📝 Total conversation messages:", conversationMessages.length);
     }
 
+    // Create cached version of bulkCrawlWebsites
+    const cachedBulkCrawlWebsites = cacheWithRedis(
+      "bulkCrawlWebsites",
+      bulkCrawlWebsites
+    );
+
     // Define tools object
     const tools = {
       searchWeb: {
@@ -202,6 +210,49 @@ export async function POST(req: Request) {
           }
         },
       },
+      scrapePages: {
+        description: "Fetch and extract the full content of web pages in markdown format",
+        parameters: z.object({
+          urls: z.array(z.string()).describe("Array of URLs to scrape and extract content from"),
+        }),
+        execute: async (args: { urls: string[] }, options: { abortSignal?: AbortSignal }) => {
+          console.log("🌐 Scrape pages tool called with URLs:", args.urls);
+          try {
+            const results = await cachedBulkCrawlWebsites({ urls: args.urls });
+            console.log("✅ Scraping completed, success:", results.success);
+
+            if (results.success) {
+              // Return successful results formatted for the AI
+              return {
+                success: true,
+                pages: results.results.map(r => ({
+                  url: r.url,
+                  content: r.result.data,
+                })),
+                totalPages: results.results.length,
+              };
+            } else {
+              // Return with error details
+              return {
+                success: false,
+                error: results.error,
+                pages: results.results.map(r => ({
+                  url: r.url,
+                  content: r.result.success ? r.result.data : null,
+                  error: !r.result.success ? r.result.error : null,
+                })),
+              };
+            }
+          } catch (error) {
+            console.error("❌ Scraping error:", error);
+            return {
+              success: false,
+              error: "Failed to scrape web pages. Please try again.",
+              urls: args.urls,
+            };
+          }
+        },
+      },
     };
 
     console.log("🔧 Tools configuration:", Object.keys(tools));
@@ -224,18 +275,29 @@ export async function POST(req: Request) {
           toolChoice: 'auto', // Explicitly enable automatic tool choice
           system: `You are a helpful AI assistant with access to real-time web search capabilities.
 
-MANDATORY TOOL USAGE:
-- You HAVE a searchWeb tool available RIGHT NOW
-- For the user's questions, you MUST call searchWeb("users_question", 10)
+AVAILABLE TOOLS:
+1. searchWeb - Search the web for current information using Google search
+   - Returns search results with titles, URLs, snippets, and additional information
+   - Use this to find relevant pages and get an overview of available information
+
+TOOL USAGE STRATEGY:
+- Use searchWeb to find relevant information about the topic
+- The search results will provide you with titles, URLs, and content snippets
+- Use the information from search results to provide comprehensive answers
+
+MANDATORY INSTRUCTIONS:
+- You MUST use the searchWeb tool for any factual questions, news, or current events
 - Do NOT say you need the function provided - IT IS ALREADY AVAILABLE
 - Do NOT say you cannot access information - USE THE TOOL
+- Use the search results to gather comprehensive information
 
-INSTRUCTIONS:
-1. IMMEDIATELY use searchWeb for any news, current events, or factual questions
-2. ALWAYS cite sources with [title](URL) format
-3. Provide comprehensive, current information
+RESPONSE FORMAT:
+1. Use searchWeb tool to gather information
+2. Synthesize information from search results
+3. ALWAYS cite sources with [title](URL) format using the URLs from search results
+4. Provide comprehensive, well-structured answers based on search snippets
 
-The user is asking about current news - USE THE SEARCH TOOL NOW.`,
+Remember: For any question requiring current information, use searchWeb to get up-to-date answers.`,
           tools,
           experimental_telemetry: {
             isEnabled: true,
