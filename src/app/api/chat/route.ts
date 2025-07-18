@@ -122,7 +122,6 @@ export async function POST(req: Request) {
     console.log("🆕 Is new chat:", isNewChat);
 
     const trace = langfuse.trace({
-      sessionId: chatId,
       name: "chat",
       userId: session.user.id,
     });
@@ -142,11 +141,27 @@ export async function POST(req: Request) {
         
         console.log("🆕 Creating new chat:", chatId, "with title:", title);
         
+        const createChatSpan = trace.span({
+          name: "create-new-chat",
+          input: {
+            userId: session.user.id,
+            chatId,
+            title,
+            messages: messages.filter(m => m.role === "user"),
+          },
+        });
+        
         await upsertChat({
           userId: session.user.id!,
           chatId: chatId,
           title,
           messages: messages.filter(m => m.role === "user"),
+        });
+        
+        createChatSpan.end({
+          output: {
+            chatId,
+          },
         });
       } else {
         console.log("⚠️ Chat already exists, treating as existing chat:", chatId);
@@ -163,7 +178,22 @@ export async function POST(req: Request) {
       // For existing chats, load the complete conversation history
       console.log("📖 Loading existing chat:", chatId);
       
+      const verifyChatOwnershipSpan = trace.span({
+        name: "verify-chat-ownership",
+        input: {
+          chatId,
+          userId: session.user.id,
+        },
+      });
+      
       const existingChat = await getChat(chatId, session.user.id!);
+      
+      verifyChatOwnershipSpan.end({
+        output: {
+          exists: !!existingChat,
+          belongsToUser: !!existingChat,
+        },
+      });
       
       if (!existingChat) {
         console.log("❌ Chat not found or access denied");
@@ -181,6 +211,11 @@ export async function POST(req: Request) {
       console.log("📝 New messages:", messages.length);
       console.log("📝 Total conversation messages:", conversationMessages.length);
     }
+    
+    // Update trace with sessionId after chat is created/loaded
+    trace.update({
+      sessionId: chatId,
+    });
 
     // Create cached version of bulkCrawlWebsites
     const cachedBulkCrawlWebsites = cacheWithRedis(
@@ -388,11 +423,27 @@ Remember: For any question requiring current information, use BOTH searchWeb and
                 : "New Chat";
               
               // Save the complete chat with all messages
+              const saveChatHistorySpan = trace.span({
+                name: "save-chat-history",
+                input: {
+                  userId: session.user.id,
+                  chatId,
+                  title,
+                  messageCount: updatedMessages.length,
+                },
+              });
+              
               await upsertChat({
                 userId: session.user.id!,
                 chatId: chatId,
                 title,
                 messages: updatedMessages,
+              });
+              
+              saveChatHistorySpan.end({
+                output: {
+                  success: true,
+                },
               });
               
               console.log("✅ Chat saved successfully:", chatId);
