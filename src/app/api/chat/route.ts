@@ -130,20 +130,35 @@ export async function POST(req: Request) {
     let conversationMessages: Message[] = messages;
 
     if (isNewChat) {
-      // For new chats, create the chat with initial user message(s)
-      const firstUserMessage = messages.find(m => m.role === "user");
-      const title = typeof firstUserMessage?.content === "string" 
-        ? firstUserMessage.content.slice(0, 100) 
-        : "New Chat";
+      // Check if this chat already exists to prevent duplicates
+      const existingChat = await getChat(chatId, session.user.id!);
       
-      console.log("🆕 Creating new chat:", chatId, "with title:", title);
-      
-      await upsertChat({
-        userId: session.user.id!,
-        chatId: chatId,
-        title,
-        messages: messages.filter(m => m.role === "user"),
-      });
+      if (!existingChat) {
+        // For new chats, create the chat with initial user message(s)
+        const firstUserMessage = messages.find(m => m.role === "user");
+        const title = typeof firstUserMessage?.content === "string" 
+          ? firstUserMessage.content.slice(0, 100) 
+          : "New Chat";
+        
+        console.log("🆕 Creating new chat:", chatId, "with title:", title);
+        
+        await upsertChat({
+          userId: session.user.id!,
+          chatId: chatId,
+          title,
+          messages: messages.filter(m => m.role === "user"),
+        });
+      } else {
+        console.log("⚠️ Chat already exists, treating as existing chat:", chatId);
+        // If chat already exists, treat it as an existing chat
+        // Transform existing messages from database format to AI SDK format
+        const existingMessages = existingChat.messages.map((msg, index) => 
+          transformDatabaseMessageToAISDK(msg, index)
+        );
+        
+        // The frontend sends only new messages, so append them to existing ones
+        conversationMessages = [...existingMessages, ...messages];
+      }
     } else {
       // For existing chats, load the complete conversation history
       console.log("📖 Loading existing chat:", chatId);
@@ -260,8 +275,10 @@ export async function POST(req: Request) {
 
     return createDataStreamResponse({
       async execute(dataStream) {
-        // Send new chat created event if this is a new chat
-        if (isNewChat) {
+        // Send new chat created event only if this is truly a new chat
+        // Check if chat exists first to prevent duplicate creation events
+        const chatExists = await getChat(chatId, session.user.id!);
+        if (isNewChat && !chatExists) {
           dataStream.writeData({
             type: "NEW_CHAT_CREATED",
             chatId: chatId,

@@ -4,6 +4,7 @@ import { auth } from "~/server/auth/index.ts";
 import { getChats } from "~/server/db/queries";
 import { AuthButton } from "../components/auth-button.tsx";
 import { ChatPage } from "./chat.tsx";
+import { NewChatButton } from "../components/new-chat-button.tsx";
 
 export default async function HomePage({
   searchParams,
@@ -20,10 +21,10 @@ export default async function HomePage({
     ? await getChats(session.user.id) 
     : [];
 
-  // Generate a stable chatId - use the one from URL or create a new one
+  // Use chatId from URL, null for new chats
   const chatIdFromUrl = id;
   const activeChatId = chatIdFromUrl; // Use the actual chatId from URL for highlighting
-  const chatId = chatIdFromUrl ?? crypto.randomUUID();
+  const chatId = chatIdFromUrl || null;
   const isNewChat = !chatIdFromUrl;
 
   return (
@@ -33,15 +34,7 @@ export default async function HomePage({
         <div className="p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-400">Your Chats</h2>
-            {isAuthenticated && (
-              <Link
-                href="/"
-                className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                title="New Chat"
-              >
-                <PlusIcon className="h-5 w-5" />
-              </Link>
-            )}
+            {isAuthenticated && <NewChatButton />}
           </div>
         </div>
         <div className="-mt-1 flex-1 space-y-2 overflow-y-auto px-4 pt-1 scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600">
@@ -77,7 +70,6 @@ export default async function HomePage({
       </div>
 
       <ChatPage 
-        key={chatId}
         userName={userName} 
         chatId={chatId}
         isNewChat={isNewChat}

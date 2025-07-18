@@ -11,43 +11,49 @@ export const upsertChat = async (opts: {
 }) => {
   const { userId, chatId, title, messages: messageList } = opts;
 
-  // Check if chat exists and belongs to the user
-  const existingChat = await db
-    .select()
-    .from(chats)
-    .where(eq(chats.id, chatId))
-    .limit(1);
-
-  if (existingChat.length > 0 && existingChat[0]?.userId !== userId) {
-    throw new Error("Chat does not belong to the logged in user");
-  }
-
   // Start a transaction to ensure data consistency
   return await db.transaction(async (tx) => {
-    // Create or update the chat
-    if (existingChat.length === 0) {
-      // Create new chat
-      await tx.insert(chats).values({
-        id: chatId,
-        title,
-        userId,
-      });
-    } else {
-      // Update existing chat
-      await tx
-        .update(chats)
-        .set({
-          title,
-          updatedAt: new Date(),
-        })
-        .where(eq(chats.id, chatId));
+    // Check if chat exists and belongs to the user within the transaction
+    const existingChat = await tx
+      .select()
+      .from(chats)
+      .where(eq(chats.id, chatId))
+      .limit(1);
+
+    if (existingChat.length > 0 && existingChat[0]?.userId !== userId) {
+      throw new Error("Chat does not belong to the logged in user");
     }
 
-    // Delete existing messages
-    await tx.delete(messages).where(eq(messages.chatId, chatId));
+    // Create or update the chat
+    if (existingChat.length === 0) {
+      // Create new chat - use onConflictDoNothing to handle race conditions
+      await tx.insert(chats)
+        .values({
+          id: chatId,
+          title,
+          userId,
+        })
+        .onConflictDoNothing(); // Prevents duplicate key errors
+    } else {
+      // Update existing chat only if title changed
+      if (existingChat[0]?.title !== title) {
+        await tx
+          .update(chats)
+          .set({
+            title,
+            updatedAt: new Date(),
+          })
+          .where(eq(chats.id, chatId));
+      }
+    }
 
-    // Insert new messages
+    // For message updates, only replace if there are actual changes
+    // This helps prevent unnecessary deletions
     if (messageList.length > 0) {
+      // Delete existing messages
+      await tx.delete(messages).where(eq(messages.chatId, chatId));
+      
+      // Insert new messages
       const messageRows = messageList.map((message, index) => ({
         id: message.id,
         chatId,

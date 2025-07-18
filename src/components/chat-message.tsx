@@ -41,15 +41,6 @@ const Markdown = ({ children }: { children: string }) => {
 export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
   const isAI = message.role === "assistant";
 
-  console.log("🔍 ChatMessage received:", {
-    id: message.id,
-    role: message.role,
-    contentType: typeof message.content,
-    content: message.content,
-    hasParts: !!message.parts,
-    partsLength: message.parts?.length || 0,
-  });
-
   return (
     <div className="mb-6">
       <div
@@ -64,9 +55,7 @@ export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
           {message.parts && message.parts.length > 0 ? (
             // Render message parts for tool calls and other structured content
             message.parts.map((part: any, index: number) => {
-              console.log(`🔍 ChatMessage part ${index}:`, part);
               if (part.type === "text") {
-                console.log(`🔍 ChatMessage rendering text part:`, part.text, typeof part.text);
                 return <Markdown key={index}>{part.text}</Markdown>;
               } else if (part.type === "tool-invocation") {
                 return (
@@ -85,7 +74,6 @@ export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
           ) : (
             // Fallback to content for backwards compatibility
             (() => {
-              console.log(`🔍 ChatMessage fallback content:`, message.content, typeof message.content);
               // Add safety check before passing to Markdown
               const contentToRender = typeof message.content === 'string' 
                 ? message.content 

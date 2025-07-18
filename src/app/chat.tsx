@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import type { Message } from "ai";
 import { Square } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { StickToBottom } from "use-stick-to-bottom";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
@@ -12,19 +12,40 @@ import { isNewChatCreated } from "~/utils";
 
 interface ChatProps {
   userName: string;
-  chatId: string;
+  chatId: string | null;
   isNewChat: boolean;
 }
 
 
 export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
+  console.log('🔄 ChatPage render:', { chatId, isNewChat, userName });
+  
   const router = useRouter();
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
   const [isLoadingChat, setIsLoadingChat] = useState(!isNewChat);
+  
+  // Generate a stable chat ID for new chats that persists across re-renders
+  const newChatIdRef = useRef<string | null>(null);
+  if (isNewChat && !newChatIdRef.current) {
+    newChatIdRef.current = crypto.randomUUID();
+    console.log('🆕 Generated new chat ID:', newChatIdRef.current);
+  }
+  
+  // Use the stable chat ID
+  const effectiveChatId = chatId || newChatIdRef.current;
+  
+  // Track if we're in the process of creating a chat to prevent duplicates
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
 
-  // Load existing messages when it's not a new chat
+  // Load existing messages and handle chat switching
   useEffect(() => {
     if (isNewChat) {
+      setInitialMessages([]);
+      setIsLoadingChat(false);
+      return;
+    }
+
+    if (!chatId) {
       setInitialMessages([]);
       setIsLoadingChat(false);
       return;
@@ -65,12 +86,13 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
     loadExistingMessages();
   }, [chatId, isNewChat]);
 
-  const { messages, input, handleInputChange, handleSubmit, status, stop, data, error } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, status, stop, data, error, setMessages } = useChat({
     api: "/api/chat",
+    id: effectiveChatId || undefined,
     initialMessages,
     body: {
-      chatId,
-      isNewChat,
+      chatId: effectiveChatId!, // Use the stable chat ID
+      isNewChat: isNewChat && !isCreatingChat, // Only treat as new if we haven't started creating
     },
     onError: (error) => {
       console.error("🔥 useChat ERROR:", error);
@@ -88,72 +110,55 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         headers: Object.fromEntries(response.headers.entries())
       });
     },
-    onFinish: (message) => {
-      console.log("🏁 useChat FINISHED:", {
-        messageId: message.id,
-        role: message.role,
-        contentLength: message.content?.length || 0,
-        timestamp: new Date().toISOString()
-      });
+    onFinish: (message, { finishReason }) => {
+      // Navigate to new chat URL when chat is created
+      if (isNewChat && !isCreatingChat && data && data.length > 0) {
+        const lastDataItem = data[data.length - 1];
+        if (isNewChatCreated(lastDataItem)) {
+          setIsCreatingChat(true); // Mark that we're creating the chat
+          console.log('🚀 Navigating to new chat:', lastDataItem.chatId);
+          // Clear the ref so a new ID is generated for the next new chat
+          newChatIdRef.current = null;
+          // Use router.push to navigate to the new chat
+          router.push(`?chatId=${lastDataItem.chatId}`);
+        }
+      }
     }
   });
 
   const isLoading = status === "streaming";
 
-  // Enhanced logging for useChat state changes
+  // Handle chat switching and error logging
   useEffect(() => {
-    console.log('🔍 useChat Status Changed:', {
-      chatId,
-      status,
-      messagesLength: messages.length,
-      isNewChat,
-      isLoading,
-      hasError: !!error,
-      errorMessage: error?.message,
-      timestamp: new Date().toISOString()
-    });
-    
-    if (error) {
-      console.error('🔥 useChat Error Details:', {
-        error,
-        errorType: typeof error,
-        errorConstructor: error.constructor.name
-      });
+    // Clear messages when switching to new chat
+    if (isNewChat && setMessages) {
+      console.log('🧹 Clearing messages for new chat');
+      setMessages([]);
+      setIsCreatingChat(false); // Reset creating flag
     }
-  }, [messages, chatId, isNewChat, isLoading, status, error]);
-
-  // Log when form is submitted
-  const enhancedHandleSubmit = (e: React.FormEvent) => {
-    console.log("📤 FORM SUBMIT:", {
-      inputValue: input,
-      chatId,
-      isNewChat,
-      currentStatus: status,
-      messagesCount: messages.length,
-      timestamp: new Date().toISOString()
-    });
     
-    return handleSubmit(e);
+    // Log errors
+    if (error) {
+      console.error('🔥 useChat Error:', error.message);
+    }
+  }, [isNewChat, setMessages, error]);
+  
+  // Reset the new chat ID ref when chatId changes (switching between chats)
+  useEffect(() => {
+    if (chatId) {
+      newChatIdRef.current = null;
+    }
+  }, [chatId]);
+
+  // Simple form submit handler with loading protection
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input.trim() && !isLoading) {
+      handleSubmit(e);
+    }
   };
 
-  useEffect(() => {
-    const lastDataItem = data?.[data.length - 1];
 
-    if (
-      lastDataItem &&
-      isNewChatCreated(lastDataItem)
-    ) {
-      router.push(`?chatId=${lastDataItem.chatId}`);
-    }
-  }, [data, router, isNewChat]);
-
-  // Log component mounting - must be before any conditional returns
-  useEffect(() => {
-    console.log('🔍 ChatPage component mounting/updating with chatId:', chatId);
-    return () => {
-      console.log('🔍 ChatPage component unmounting for chatId:', chatId);
-    };
-  }, [chatId]);
 
   if (isLoadingChat) {
     return (
@@ -170,10 +175,9 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
   return (
     <>
       <StickToBottom
-        key={chatId}
         className="flex flex-1 flex-col [&>div]:scrollbar-thin [&>div]:scrollbar-track-gray-800 [&>div]:scrollbar-thumb-gray-600 [&>div]:hover:scrollbar-thumb-gray-500"
-        resize="smooth"
-        initial="smooth"
+        resize="instant"
+        initial="instant"
       >
         <StickToBottom.Content className="mx-auto w-full max-w-[65ch] flex-1 flex flex-col gap-4 p-4">
           {messages.length === 0 ? (
@@ -195,7 +199,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
 
         <div className="border-t border-gray-700">
           <form
-            onSubmit={enhancedHandleSubmit}
+            onSubmit={handleFormSubmit}
             className="mx-auto max-w-[65ch] p-4"
           >
             <div className="flex gap-2">
@@ -209,9 +213,9 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
                 disabled={isLoading || isLoadingChat}
               />
               <button
-                type="button"
-                onClick={isLoading ? stop : enhancedHandleSubmit}
-                disabled={(isLoading && !input.trim()) || isLoadingChat}
+                type={isLoading ? "button" : "submit"}
+                onClick={isLoading ? stop : undefined}
+                disabled={(!input.trim() && !isLoading) || isLoadingChat}
                 className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-600 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:hover:bg-gray-700"
               >
                 {isLoading ? <Square className="size-4" /> : "Send"}
