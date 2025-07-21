@@ -5,6 +5,7 @@ import { z } from "zod";
 import { askDeepSearch } from "~/deep-search";
 import { env } from "~/env";
 import { factualityModel } from "~/models";
+import { AnswerRelevancy } from "./answer-relevancy.js";
 import { ciData } from "./ci";
 import { devData } from "./dev";
 import { regressionData } from "./regression";
@@ -149,5 +150,6 @@ evalite("Deep Search Eval", {
       },
     },
     Factuality,
+    AnswerRelevancy,
   ],
 }); 
