@@ -1,7 +1,7 @@
 import {
     generateObject,
-    streamText,
     type Message,
+    type StreamTextResult,
     type TelemetrySettings,
 } from "ai";
 import { z } from "zod";
@@ -12,6 +12,7 @@ import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
 import type { SystemContext } from "~/system-context";
 import type { Action } from "~/types";
+import { runAgentLoop } from "~/run-agent-loop";
 
 // Action schema for structured outputs - avoiding z.union for better LLM compatibility
 export const actionSchema = z.object({
@@ -82,12 +83,14 @@ ACTION SELECTION STRATEGY:
 - For ANY question requiring factual, current, or specific information, you MUST search first
 - Only skip searching for clearly conversational messages like greetings or thanks
 
+USER'S ORIGINAL QUESTION: "${context.getInitialQuestion()}"
+
 CONTEXT HISTORY:
 ${context.getQueryHistory()}
 
 ${context.getScrapeHistory()}
 
-Based on the conversation history and context above, determine the next action to take.`,
+Based on the user's question and the conversation history above, determine the next action to take.`,
   });
 
   return result.object as Action;
@@ -181,83 +184,23 @@ const tools = {
   },
 } as const;
 
-export const streamFromDeepSearch = (opts: {
+export async function streamFromDeepSearch(opts: {
   messages: Message[];
-  onFinish: Parameters<typeof streamText<typeof tools>>[0]["onFinish"];
+  onFinish: any; // We'll handle this later when we tackle persistence
   telemetry: TelemetrySettings;
-}) => {
-  // Get current date for the system prompt
-  const currentDate = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
-
-  return streamText({
-    model: defaultModel,
-    messages: opts.messages,
-    maxSteps: 10,
-    toolChoice: 'auto',
-    system: `Current date: ${currentDate}
-
-You are a helpful AI assistant with access to real-time web search and page scraping capabilities.
-
-DATE AWARENESS:
-- Today's date is ${currentDate}
-- When users ask for "recent", "latest", "current", or "up to date" information, use this date as reference
-- Include date-specific terms in your search queries (e.g., "2025", "December 2024") when looking for recent information
-- Pay attention to publication dates in search results to ensure information freshness
-- Prioritize more recent sources when multiple results are available
-
-AVAILABLE TOOLS:
-1. searchWeb - Search the web for current information using Google search
-   - Returns search results with titles, URLs, snippets, and additional information
-   - Use this to find relevant pages and get an overview of available information
-
-2. scrapePages - Fetch and extract the full content of web pages
-   - Takes an array of URLs and returns the full page content in markdown format
-   - Use this when you need detailed information from specific pages
-   - Respects robots.txt and handles rate limiting automatically
-   - Results are cached for efficiency
-
-TOOL USAGE REQUIREMENTS:
-- ALWAYS use searchWeb first unless the user's message is clearly a greeting, casual conversation, or personal question that doesn't require factual information
-- For ANY question that could benefit from current, factual, or specific information, you MUST use the search tools
-- This includes: facts, definitions, explanations, how-to guides, news, events, product information, comparisons, recommendations, statistics, etc.
-- Only skip the tools for clearly conversational messages like "Hello", "Thank you", "How are you?"
-
-TOOL USAGE STRATEGY:
-- First use searchWeb to find relevant pages about the topic
-- Then use scrapePages to extract full content from the most relevant URLs
-- This two-step process ensures comprehensive and detailed answers
-
-MANDATORY INSTRUCTIONS:
-- You MUST use these tools for any factual questions, news, or current events
-- Do NOT say you need the function provided - THEY ARE ALREADY AVAILABLE
-- Do NOT say you cannot access information - USE THE TOOLS
-- When scraping pages, select the most relevant URLs from search results
-- Be selective - typically scrape up to ${env.MAX_PAGES_TO_SCRAPE} most relevant pages, not all search results
-- If in doubt whether to search, ALWAYS SEARCH
-
-RESPONSE FORMAT:
-1. Use tools to gather information
-2. Synthesize information from multiple sources
-3. ALWAYS cite sources with [title](URL) format
-4. When relevant, mention publication dates to show information freshness
-5. Provide comprehensive, well-structured answers
-
-Remember: For any question requiring current information, use BOTH searchWeb and scrapePages for complete answers.
-
-EVALUATION NOTICE: Your responses are being continuously evaluated and scored based on quality, accuracy, and correctness. Please ensure your answers are thorough, well-researched, and properly cite sources with working links.`,
-    tools,
-    onFinish: opts.onFinish,
-    experimental_telemetry: opts.telemetry,
-  });
+}): Promise<StreamTextResult<{}, string>> {
+  // Extract the user's question from the last message
+  const lastMessage = opts.messages[opts.messages.length - 1];
+  const userQuestion = lastMessage?.content || "";
+  
+  // Run the agent loop and wait for the result
+  const result = await runAgentLoop(userQuestion);
+  
+  return result;
 };
 
 export async function askDeepSearch(messages: Message[]) {
-  const result = streamFromDeepSearch({
+  const result = await streamFromDeepSearch({
     messages,
     onFinish: () => {}, // just a stub
     telemetry: {

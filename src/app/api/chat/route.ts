@@ -30,7 +30,7 @@ function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
   });
 
   // Transform the database content format to proper AI SDK format
-  let transformedMessage: any = {
+  const transformedMessage: any = {
     id: msg.id,
     role: msg.role,
     createdAt: msg.createdAt,
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
       return Response.json({ messages: [] });
     }
 
-    const existingChat = await getChat(chatId, session.user.id!);
+    const existingChat = await getChat(chatId, session.user.id);
     
     if (!existingChat) {
       return Response.json({ messages: [] });
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
     let conversationMessages: Message[] = messages;
 
     // First, check if this chat already exists in the database
-    const checkExistingChat = await getChat(chatId, session.user.id!);
+    const checkExistingChat = await getChat(chatId, session.user.id);
     
     if (isNewChat && !checkExistingChat) {
       // This is truly a new chat - create it
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
         });
         
         await upsertChat({
-          userId: session.user.id!,
+          userId: session.user.id,
           chatId: chatId,
           title,
           messages: messages.filter(m => m.role === "user"),
@@ -242,7 +242,7 @@ export async function POST(req: Request) {
       async execute(dataStream) {
         // Send new chat created event only if this is truly a new chat
         // Check if chat exists first to prevent duplicate creation events
-        const chatExists = await getChat(chatId, session.user.id!);
+        const chatExists = await getChat(chatId, session.user.id);
         if (isNewChat && !chatExists) {
           dataStream.writeData({
             type: "NEW_CHAT_CREATED",
@@ -291,7 +291,7 @@ export async function POST(req: Request) {
               });
               
               await upsertChat({
-                userId: session.user.id!,
+                userId: session.user.id,
                 chatId: chatId,
                 title,
                 messages: updatedMessages,
