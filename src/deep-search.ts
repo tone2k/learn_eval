@@ -1,7 +1,8 @@
 import {
-  streamText,
-  type Message,
-  type TelemetrySettings,
+    generateObject,
+    streamText,
+    type Message,
+    type TelemetrySettings,
 } from "ai";
 import { z } from "zod";
 import { env } from "~/env";
@@ -9,6 +10,88 @@ import { defaultModel } from "~/models";
 import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
+import type { SystemContext } from "~/system-context";
+import type { Action } from "~/types";
+
+// Action schema for structured outputs - avoiding z.union for better LLM compatibility
+export const actionSchema = z.object({
+  type: z
+    .enum(["search", "scrape", "answer"])
+    .describe(
+      `The type of action to take.
+      - 'search': Search the web for more information.
+      - 'scrape': Scrape a URL.
+      - 'answer': Answer the user's question and complete the loop.`,
+    ),
+  query: z
+    .string()
+    .describe(
+      "The query to search for. Required if type is 'search'.",
+    )
+    .optional(),
+  urls: z
+    .array(z.string())
+    .describe(
+      "The URLs to scrape. Required if type is 'scrape'.",
+    )
+    .optional(),
+});
+
+export const getNextAction = async (
+  context: SystemContext,
+): Promise<Action> => {
+  // Get current date for the system prompt
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
+  const result = await generateObject({
+    model: defaultModel,
+    schema: actionSchema,
+    prompt: `Current date: ${currentDate}
+
+You are a helpful AI assistant that needs to choose the next action to take in a deep search conversation.
+
+DATE AWARENESS:
+- Today's date is ${currentDate}
+- When users ask for "recent", "latest", "current", or "up to date" information, prioritize searching with date-specific terms
+- Pay attention to publication dates in search results to ensure information freshness
+
+AVAILABLE ACTIONS:
+1. search - Search the web for more information using Google search
+   - Use this when you need to find relevant pages and get an overview of available information
+   - Include specific search terms that would help find the most relevant results
+   - Consider using date-specific terms when looking for recent information
+
+2. scrape - Scrape specific URLs to get detailed content
+   - Use this when you have identified specific URLs that contain the information needed
+   - Select the most relevant URLs that would provide comprehensive answers
+   - Typically scrape up to ${env.MAX_PAGES_TO_SCRAPE} most relevant pages
+
+3. answer - Answer the user's question and complete the loop
+   - Use this when you have gathered sufficient information to provide a comprehensive answer
+   - Only choose this when you have enough context from previous searches and scrapes
+
+ACTION SELECTION STRATEGY:
+- ALWAYS start with 'search' unless you already have sufficient information to answer
+- After searching, use 'scrape' to get detailed content from the most relevant URLs found
+- Only use 'answer' when you have comprehensive information to fully address the user's question
+- For ANY question requiring factual, current, or specific information, you MUST search first
+- Only skip searching for clearly conversational messages like greetings or thanks
+
+CONTEXT HISTORY:
+${context.getQueryHistory()}
+
+${context.getScrapeHistory()}
+
+Based on the conversation history and context above, determine the next action to take.`,
+  });
+
+  return result.object as Action;
+};
 
 // Create cached version of bulkCrawlWebsites
 const cachedBulkCrawlWebsites = cacheWithRedis(
