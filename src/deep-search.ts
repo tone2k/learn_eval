@@ -163,7 +163,9 @@ RESPONSE FORMAT:
 4. When relevant, mention publication dates to show information freshness
 5. Provide comprehensive, well-structured answers
 
-Remember: For any question requiring current information, use BOTH searchWeb and scrapePages for complete answers.`,
+Remember: For any question requiring current information, use BOTH searchWeb and scrapePages for complete answers.
+
+EVALUATION NOTICE: Your responses are being continuously evaluated and scored based on quality, accuracy, and correctness. Please ensure your answers are thorough, well-researched, and properly cite sources with working links.`,
     tools,
     onFinish: opts.onFinish,
     experimental_telemetry: opts.telemetry,

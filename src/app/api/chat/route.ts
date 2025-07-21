@@ -5,10 +5,19 @@ import { env } from "~/env";
 import { streamFromDeepSearch } from "~/deep-search";
 import { auth } from "~/server/auth";
 import { getChat, upsertChat } from "~/server/db/queries";
+import { checkRateLimit, recordRateLimit, type RateLimitConfig } from "~/server/rate-limit";
 
 const langfuse = new Langfuse({
   environment: env.NODE_ENV,
 });
+
+// Rate limiting configuration
+const rateLimitConfig: RateLimitConfig = {
+  maxRequests: 20, // 20 requests per minute
+  maxRetries: 3,
+  windowMs: 60_000, // 1 minute window
+  keyPrefix: "chat_api",
+};
 
 // Helper function to transform database message format to AI SDK format
 function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
@@ -101,6 +110,31 @@ export async function POST(req: Request) {
       console.log("❌ No session, returning 401");
       return new Response("Unauthorized", { status: 401 });
     }
+
+    // Check rate limit for authenticated users
+    console.log("🚦 Checking rate limit...");
+    const rateLimitCheck = await checkRateLimit(rateLimitConfig);
+    
+    if (!rateLimitCheck.allowed) {
+      console.log("🛑 Rate limit exceeded, waiting for reset...");
+      const isAllowed = await rateLimitCheck.retry();
+      
+      if (!isAllowed) {
+        console.log("❌ Rate limit exceeded after retries");
+        return new Response("Rate limit exceeded", {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": rateLimitConfig.maxRequests.toString(),
+            "X-RateLimit-Remaining": rateLimitCheck.remaining.toString(),
+            "X-RateLimit-Reset": rateLimitCheck.resetTime.toString(),
+          },
+        });
+      }
+    }
+    
+    // Record the request
+    await recordRateLimit(rateLimitConfig);
+    console.log("✅ Rate limit check passed, proceeding with request");
 
     const { 
       messages, 
