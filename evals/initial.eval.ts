@@ -3,7 +3,11 @@ import { generateObject } from "ai";
 import { createScorer, evalite } from "evalite";
 import { z } from "zod";
 import { askDeepSearch } from "~/deep-search";
+import { env } from "~/env";
 import { factualityModel } from "~/models";
+import { ciData } from "./ci";
+import { devData } from "./dev";
+import { regressionData } from "./regression";
 
 export const checkFactuality = async (opts: {
   question: string;
@@ -93,47 +97,17 @@ evalite("Deep Search Eval", {
   data: async (): Promise<
     { input: Message[]; expected: string }[]
   > => {
-    return [
-      {
-        input: [
-          {
-            id: "1",
-            role: "user",
-            content:
-              "What is the latest version of TypeScript?",
-          },
-        ],
-        expected:
-          "The current TypeScript version is 5.8",
-      },
-      {
-        input: [
-          {
-            id: "2",
-            role: "user",
-            content:
-              "What are the main features of Next.js 15?",
-          },
-        ],
-        expected: `
-@next/codemod CLI: Easily upgrade to the latest Next.js and React versions.
-Async Request APIs (Breaking): Incremental step towards a simplified rendering and caching model.
-Caching Semantics (Breaking): fetch requests, GET Route Handlers, and client navigations are no longer cached by default.
-React 19 Support: Support for React 19, React Compiler (Experimental), and hydration error improvements.
-Turbopack Dev (Stable): Performance and stability improvements.
-Static Indicator: New visual indicator shows static routes during development.
-unstable_after API (Experimental): Execute code after a response finishes streaming.
-instrumentation.js API (Stable): New API for server lifecycle observability.
-Enhanced Forms (next/form): Enhance HTML forms with client-side navigation.
-next.config: TypeScript support for next.config.ts.
-Self-hosting Improvements: More control over Cache-Control headers.
-Server Actions Security: Unguessable endpoints and removal of unused actions.
-Bundling External Packages (Stable): New config options for App and Pages Router.
-ESLint 9 Support: Added support for ESLint 9.
-Development and Build Performance: Improved build times and Faster Fast Refresh.
-`,
-      },
-    ];
+    const data = [...devData];
+
+    // If CI, add the CI data
+    if (env.EVAL_DATASET === "ci") {
+      data.push(...ciData);
+      // If Regression, add the regression data AND the CI data
+    } else if (env.EVAL_DATASET === "regression") {
+      data.push(...ciData, ...regressionData);
+    }
+
+    return data;
   },
   task: async (input) => {
     return askDeepSearch(input);
@@ -149,6 +123,29 @@ Development and Build Performance: Improved build times and Faster Fast Refresh.
         const containsLinks = markdownLinkRegex.test(output);
 
         return containsLinks ? 1 : 0;
+      },
+    },
+    {
+      name: "Multi-hop Reasoning",
+      description:
+        "Checks if the output shows evidence of multi-step reasoning by mentioning intermediate steps or connections.",
+      scorer: ({ output }) => {
+        // Look for indicators of multi-step reasoning
+        const reasoningIndicators = [
+          /first|initially|starting with/i,
+          /then|next|subsequently|therefore/i,
+          /because|since|as a result/i,
+          /which means|this leads to|consequently/i,
+          /step \d+|stage \d+/i,
+          /born in|located in|capital of|symbol for/i
+        ];
+        
+        const indicatorCount = reasoningIndicators.filter(pattern => 
+          pattern.test(output)
+        ).length;
+        
+        // Score based on how many reasoning indicators are present
+        return Math.min(indicatorCount / 3, 1); // Normalize to 0-1 scale
       },
     },
     Factuality,
