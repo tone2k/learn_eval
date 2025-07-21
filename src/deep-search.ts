@@ -1,9 +1,10 @@
 import {
-    streamText,
-    type Message,
-    type TelemetrySettings,
+  streamText,
+  type Message,
+  type TelemetrySettings,
 } from "ai";
 import { z } from "zod";
+import { env } from "~/env";
 import { defaultModel } from "~/models";
 import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
@@ -21,7 +22,7 @@ const tools = {
     description: "Search the web for current information using Google search",
     parameters: z.object({
       query: z.string().describe("The search query to look up"),
-      num: z.number().default(10).describe("Number of search results to return (default: 10)"),
+      num: z.number().default(env.SEARCH_RESULTS_COUNT).describe(`Number of search results to return (default: ${env.SEARCH_RESULTS_COUNT})`),
     }),
     execute: async (args: { query: string; num: number }, options: { abortSignal?: AbortSignal }) => {
       console.log("🔍 Search tool called with query:", args.query);
@@ -95,11 +96,11 @@ const tools = {
       }
     },
   },
-};
+} as const;
 
 export const streamFromDeepSearch = (opts: {
   messages: Message[];
-  onFinish: Parameters<typeof streamText>[0]["onFinish"];
+  onFinish: Parameters<typeof streamText<typeof tools>>[0]["onFinish"];
   telemetry: TelemetrySettings;
 }) => {
   // Get current date for the system prompt
@@ -153,7 +154,7 @@ MANDATORY INSTRUCTIONS:
 - Do NOT say you need the function provided - THEY ARE ALREADY AVAILABLE
 - Do NOT say you cannot access information - USE THE TOOLS
 - When scraping pages, select the most relevant URLs from search results
-- Be selective - typically scrape 4-6 most relevant pages, not all search results
+- Be selective - typically scrape up to ${env.MAX_PAGES_TO_SCRAPE} most relevant pages, not all search results
 - If in doubt whether to search, ALWAYS SEARCH
 
 RESPONSE FORMAT:
