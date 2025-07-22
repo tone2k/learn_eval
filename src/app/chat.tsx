@@ -8,6 +8,7 @@ import { useEffect, useState, useRef } from "react";
 import { StickToBottom } from "use-stick-to-bottom";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
+import type { OurMessageAnnotation } from "~/types";
 import { isNewChatCreated } from "~/utils";
 
 interface ChatProps {
@@ -186,11 +187,13 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
             </div>
           ) : (
             <>
-              {messages.map((message) => (
+              {messages.map((message, index) => (
                 <ChatMessage
-                  key={message.id}
-                  message={message}
+                  key={index}
+                  parts={message.parts ?? []}
+                  role={message.role}
                   userName={userName}
+                  annotations={((message as any).annotations ?? []) as OurMessageAnnotation[]}
                 />
               ))}
             </>

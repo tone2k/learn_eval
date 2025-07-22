@@ -132,9 +132,9 @@ export const messages = createTable(
     chatId: varchar("chat_id", { length: 255 })
       .notNull()
       .references(() => chats.id),
-    role: varchar("role", { length: 50 }).notNull(),
-    content: text("content").notNull(),
-    parts: json("parts"),
+    role: varchar("role", { length: 255 }).notNull(),
+    parts: json("parts").notNull(),
+    annotations: json("annotations"),
     order: integer("order").notNull(),
     createdAt: timestamp("created_at", {
       mode: "date",

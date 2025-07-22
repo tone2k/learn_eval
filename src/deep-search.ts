@@ -211,7 +211,7 @@ const tools = {
 
 export async function streamFromDeepSearch(opts: {
   messages: Message[];
-  onFinish: any; // We'll handle this later when we tackle persistence
+  onFinish: any;
   telemetry: TelemetrySettings;
   writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
 }): Promise<StreamTextResult<{}, string>> {
@@ -219,7 +219,11 @@ export async function streamFromDeepSearch(opts: {
   const langfuseTraceId = opts.telemetry.isEnabled ? opts.telemetry.metadata?.langfuseTraceId as string | undefined : undefined;
   
   // Run the agent loop with the full conversation history
-  const result = await runAgentLoop(opts.messages, undefined, opts.writeMessageAnnotation, langfuseTraceId);
+  const result = await runAgentLoop(opts.messages, {
+    langfuseTraceId,
+    writeMessageAnnotation: opts.writeMessageAnnotation,
+    onFinish: opts.onFinish,
+  });
   
   return result;
 };

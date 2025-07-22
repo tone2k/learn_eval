@@ -4,8 +4,10 @@ import type { OurMessageAnnotation } from "~/types";
 import { ReasoningSteps } from "./reasoning-steps";
 
 interface ChatMessageProps {
-  message: Message;
+  parts: any[];
+  role: string;
   userName: string;
+  annotations: OurMessageAnnotation[];
 }
 
 const components: Components = {
@@ -40,13 +42,18 @@ const Markdown = ({ children }: { children: string }) => {
   return <ReactMarkdown components={components}>{children}</ReactMarkdown>;
 };
 
-export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
-  const isAI = message.role === "assistant";
+export const ChatMessage = ({
+  parts,
+  role,
+  userName,
+  annotations,
+}: ChatMessageProps) => {
+  const isAI = role === "assistant";
 
-  // Get annotations if available and filter for NEW_ACTION type
-  const annotations = (message.annotations as OurMessageAnnotation[] | undefined)?.filter(
+  // Filter annotations for NEW_ACTION type
+  const filteredAnnotations = annotations.filter(
     (annotation) => annotation.type === "NEW_ACTION"
-  ) || [];
+  );
 
   return (
     <div className="mb-6">
@@ -59,14 +66,14 @@ export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
         </p>
 
         {/* Show reasoning steps only for AI messages with annotations */}
-        {isAI && annotations.length > 0 && (
-          <ReasoningSteps annotations={annotations} />
+        {isAI && filteredAnnotations.length > 0 && (
+          <ReasoningSteps annotations={filteredAnnotations} />
         )}
 
         <div className="prose prose-invert max-w-none">
-          {message.parts && message.parts.length > 0 ? (
+          {parts && parts.length > 0 ? (
             // Render message parts for tool calls and other structured content
-            message.parts.map((part: any, index: number) => {
+            parts.map((part: any, index: number) => {
               if (part.type === "text") {
                 return <Markdown key={index}>{part.text}</Markdown>;
               } else if (part.type === "tool-invocation") {
@@ -84,14 +91,8 @@ export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
               return null;
             })
           ) : (
-            // Fallback to content for backwards compatibility
-            (() => {
-              // Add safety check before passing to Markdown
-              const contentToRender = typeof message.content === 'string' 
-                ? message.content 
-                : JSON.stringify(message.content);
-              return <Markdown>{contentToRender}</Markdown>;
-            })()
+            // Render empty state for messages without parts
+            <p className="text-gray-500">No content</p>
           )}
         </div>
       </div>

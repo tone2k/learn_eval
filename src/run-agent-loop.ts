@@ -94,12 +94,15 @@ export async function scrapeUrl(context: SystemContext, urls: string[]): Promise
  */
 export async function runAgentLoop(
   conversationMessages: Message[],
-  initialContext?: SystemContext,
-  writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void,
-  langfuseTraceId?: string
+  opts: {
+    langfuseTraceId?: string;
+    writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
+    onFinish: any;
+  }
 ): Promise<StreamTextResult<{}, string>> {
+  const { langfuseTraceId, writeMessageAnnotation, onFinish } = opts;
   // A persistent container for the state of our system
-  const ctx = initialContext ?? new SystemContext(conversationMessages);
+  const ctx = new SystemContext(conversationMessages);
   
   // Get the latest user message for logging purposes
   const latestUserMessage = ctx.getLatestUserMessage();
@@ -136,7 +139,11 @@ export async function runAgentLoop(
       await scrapeUrl(ctx, nextAction.urls);
     } else if (nextAction.type === "answer") {
       console.log("🎯 Ready to answer the question");
-      return answerQuestion(ctx, { isFinal: false }, langfuseTraceId);
+      return answerQuestion(ctx, { 
+        isFinal: false,
+        langfuseTraceId,
+        onFinish,
+      });
     }
     
     // We increment the step counter
@@ -146,5 +153,9 @@ export async function runAgentLoop(
   // If we've taken 10 actions and still don't have an answer,
   // we ask the LLM to give its best attempt at an answer
   console.log("⏰ Reached maximum steps, providing final answer");
-  return answerQuestion(ctx, { isFinal: true }, langfuseTraceId);
+  return answerQuestion(ctx, { 
+    isFinal: true, 
+    langfuseTraceId,
+    onFinish,
+  });
 } 

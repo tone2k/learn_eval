@@ -5,6 +5,8 @@ import type { SystemContext } from "~/system-context";
 
 interface AnswerOptions {
   isFinal?: boolean;
+  langfuseTraceId?: string;
+  onFinish: any;
 }
 
 /**
@@ -12,10 +14,9 @@ interface AnswerOptions {
  */
 export function answerQuestion(
   context: SystemContext,
-  options: AnswerOptions = {},
-  langfuseTraceId?: string
+  opts: AnswerOptions
 ): StreamTextResult<{}, string> {
-  const { isFinal = false } = options;
+  const { isFinal = false, langfuseTraceId, onFinish } = opts;
   
   // Get current date for the system prompt
   const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -217,5 +218,6 @@ Remember: You're that friend who can explain anything clearly. Be warm, knowledg
     } : {
       isEnabled: false,
     },
+    onFinish,
   });
 } 

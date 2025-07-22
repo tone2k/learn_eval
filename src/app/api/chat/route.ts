@@ -27,43 +27,35 @@ function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
     role: msg.role,
     contentType: typeof msg.content,
     content: msg.content,
+    parts: msg.parts,
     createdAt: msg.createdAt,
   });
 
-  // Transform the database content format to proper AI SDK format
-  const transformedMessage: any = {
+  // Parse content if it's a JSON string, otherwise use as-is
+  let content = msg.content;
+  if (typeof msg.content === "string" && (msg.content.startsWith('[') || msg.content.startsWith('{'))) {
+    try {
+      content = JSON.parse(msg.content);
+    } catch (e) {
+      // If parsing fails, keep as string
+      content = msg.content;
+    }
+  }
+
+  const transformedMessage: Message = {
     id: msg.id,
     role: msg.role,
+    content: content,
     createdAt: msg.createdAt,
   };
 
-  // Handle content transformation
-  if (Array.isArray(msg.content)) {
-    // Content is stored as array of parts
-    const textParts = msg.content.filter((part: any) => part.type === "text");
-    const hasNonTextParts = msg.content.some((part: any) => part.type !== "text");
-
-    if (hasNonTextParts || textParts.length > 1) {
-      // Complex message with multiple parts or non-text parts - use parts format
-      transformedMessage.parts = msg.content;
-      transformedMessage.content = ""; // AI SDK expects content to be present
-    } else if (textParts.length === 1) {
-      // Simple text message - extract the text string
-      transformedMessage.content = textParts[0].text;
-    } else {
-      // Fallback for edge cases
-      transformedMessage.content = "";
-    }
-  } else if (typeof msg.content === "string") {
-    // Content is already a string
-    transformedMessage.content = msg.content;
-  } else {
-    // Fallback for unexpected formats
-    transformedMessage.content = JSON.stringify(msg.content);
+  // Add parts if they exist
+  if (msg.parts) {
+    (transformedMessage as any).parts = msg.parts;
   }
 
   console.log(`🔍 Transformed message ${index}:`, transformedMessage);
-  return transformedMessage as Message;
+  return transformedMessage;
 }
 
 export async function GET(req: Request) {
@@ -81,7 +73,7 @@ export async function GET(req: Request) {
       return Response.json({ messages: [] });
     }
 
-    const existingChat = await getChat(chatId, session.user.id);
+    const existingChat = await getChat({ chatId, userId: session.user.id });
     
     if (!existingChat) {
       return Response.json({ messages: [] });
@@ -161,7 +153,7 @@ export async function POST(req: Request) {
     let conversationMessages: Message[] = messages;
 
     // First, check if this chat already exists in the database
-    const checkExistingChat = await getChat(chatId, session.user.id);
+    const checkExistingChat = await getChat({ chatId, userId: session.user.id });
     
     if (isNewChat && !checkExistingChat) {
       // This is truly a new chat - create it
@@ -238,12 +230,15 @@ export async function POST(req: Request) {
     });
 
     console.log("🔧 Starting deep search stream");
+    
+    // Collect annotations in memory during the stream
+    const annotations: OurMessageAnnotation[] = [];
 
     return createDataStreamResponse({
       async execute(dataStream) {
         // Send new chat created event only if this is truly a new chat
         // Check if chat exists first to prevent duplicate creation events
-        const chatExists = await getChat(chatId, session.user.id);
+        const chatExists = await getChat({ chatId, userId: session.user.id });
         if (isNewChat && !chatExists) {
           dataStream.writeData({
             type: "NEW_CHAT_CREATED",
@@ -261,55 +256,43 @@ export async function POST(req: Request) {
             },
           },
           writeMessageAnnotation: (annotation: OurMessageAnnotation) => {
+            // Save the annotation in-memory
+            annotations.push(annotation);
+            // Send it to the client
             dataStream.writeMessageAnnotation(annotation as any);
           },
-          onFinish: async ({ text, finishReason, usage, response }: any) => {
-            console.log("🏁 Stream finished, saving to database");
-            console.log("📊 Finish reason:", finishReason);
-            console.log("💬 Response messages:", response.messages.length);
+          onFinish: async ({ response }: any) => {
+            console.log("onFinish", response);
             
             try {
-              // Append response messages to existing messages
+              // Merge the existing messages with the response messages
               const updatedMessages = appendResponseMessages({
-                messages: conversationMessages, // Use conversationMessages for saving
+                messages: conversationMessages,
                 responseMessages: response.messages,
               });
-              
-              console.log("📝 Updated messages count:", updatedMessages.length);
-              
-              // Extract title from the first user message if this is a new chat
+
+              const lastMessage = updatedMessages[updatedMessages.length - 1];
+              if (!lastMessage) {
+                return;
+              }
+
+              // Add the annotations to the last message
+              (lastMessage as any).annotations = annotations;
+
+              // Extract title from the first user message
               const firstUserMessage = updatedMessages.find(m => m.role === "user");
               const title = typeof firstUserMessage?.content === "string" 
-                ? firstUserMessage.content.slice(0, 100) 
+                ? firstUserMessage.content.slice(0, 50) + "..." 
                 : "New Chat";
-              
-              // Save the complete chat with all messages
-              const saveChatHistorySpan = trace.span({
-                name: "save-chat-history",
-                input: {
-                  userId: session.user.id,
-                  chatId,
-                  title,
-                  messageCount: updatedMessages.length,
-                },
-              });
-              
+
+              // Save the complete chat history
               await upsertChat({
                 userId: session.user.id,
-                chatId: chatId,
+                chatId,
                 title,
                 messages: updatedMessages,
               });
-              
-              saveChatHistorySpan.end({
-                output: {
-                  success: true,
-                },
-              });
-              
-              console.log("✅ Chat saved successfully:", chatId);
 
-              // Flush Langfuse trace data
               await langfuse.flushAsync();
             } catch (error) {
               console.error("❌ Error saving chat:", error);

@@ -9,7 +9,7 @@ export const upsertChat = async (opts: {
   title: string;
   messages: Message[];
 }) => {
-  const { userId, chatId, title, messages: messageList } = opts;
+  const { userId, chatId, title, messages: newMessages } = opts;
 
   // Start a transaction to ensure data consistency
   return await db.transaction(async (tx) => {
@@ -49,51 +49,50 @@ export const upsertChat = async (opts: {
 
     // For message updates, only replace if there are actual changes
     // This helps prevent unnecessary deletions
-    if (messageList.length > 0) {
+    if (newMessages.length > 0) {
       // Delete existing messages
       await tx.delete(messages).where(eq(messages.chatId, chatId));
       
-      // Insert new messages
-      const messageRows = messageList.map((message, index) => ({
-        id: message.id,
-        chatId,
-        role: message.role,
-        content: typeof message.content === "string" ? message.content : JSON.stringify(message.content),
-        parts: message.parts,
-        order: index,
-      }));
-
-      await tx.insert(messages).values(messageRows);
+      // Insert all messages
+      await tx.insert(messages).values(
+        newMessages.map((message, index) => ({
+          id: crypto.randomUUID(),
+          chatId,
+          role: message.role,
+          parts: message.parts,
+          annotations: (message as any).annotations,
+          order: index,
+        })),
+      );
     }
 
-    return chatId;
+    return { id: chatId };
   });
 };
 
-export const getChat = async (chatId: string, userId: string) => {
-  const chat = await db
-    .select()
-    .from(chats)
-    .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
-    .limit(1);
+export const getChat = async (opts: { userId: string; chatId: string }) => {
+  const { userId, chatId } = opts;
 
-  if (chat.length === 0) {
+  const chat = await db.query.chats.findFirst({
+    where: and(eq(chats.id, chatId), eq(chats.userId, userId)),
+    with: {
+      messages: {
+        orderBy: (messages, { asc }) => [asc(messages.order)],
+      },
+    },
+  });
+
+  if (!chat) {
     return null;
   }
 
-  const chatMessages = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.chatId, chatId))
-    .orderBy(messages.order);
-
   return {
-    ...chat[0],
-    messages: chatMessages.map(msg => ({
-      id: msg.id,
-      role: msg.role as "user" | "assistant" | "system",
-      content: msg.parts || msg.content,
-      createdAt: msg.createdAt,
+    ...chat,
+    messages: chat.messages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.parts,
+      annotations: message.annotations,
     })),
   };
 };
