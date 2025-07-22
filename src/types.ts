@@ -60,6 +60,24 @@ export interface AnswerAction {
 
 export type Action = SearchAction | AnswerAction;
 
+// URL Summarization types
+export interface SummarizeURLInput {
+  conversationHistory: Message[];
+  scrapedContent: string;
+  searchMetadata: {
+    title: string;
+    url: string;
+    snippet: string;
+    date?: string;
+  };
+  query: string;
+}
+
+export interface SummarizeURLResult {
+  summary: string;
+  url: string;
+}
+
 // Message annotation type for progress indicators
 export type OurMessageAnnotation = {
   type: "NEW_ACTION";

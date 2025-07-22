@@ -12,4 +12,7 @@ export const geminiPro = google("gemini-1.5-pro-latest");
 export const defaultModel = geminiPro;
 
 // Model for factuality evaluation
-export const factualityModel = google("gemini-1.5-flash-latest"); 
+export const factualityModel = google("gemini-1.5-flash-latest");
+
+// Model for URL summarization - fast with large context window
+export const summarizerModel = google("gemini-2.0-flash-lite"); 

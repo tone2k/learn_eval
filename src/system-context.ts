@@ -6,7 +6,7 @@ type SearchResult = {
   title: string;
   url: string;
   snippet: string;
-  scrapedContent: string;
+  summary: string; // Changed from scrapedContent to summary
 };
 
 type SearchHistoryEntry = {
@@ -26,7 +26,7 @@ export class SystemContext {
   private readonly conversationMessages: Message[];
 
   /**
-   * The history of all searches performed, including scraped content
+   * The history of all searches performed, including URL summaries
    */
   private searchHistory: SearchHistoryEntry[] = [];
 
@@ -66,9 +66,9 @@ export class SystemContext {
               `### ${result.date} - ${result.title}`,
               result.url,
               result.snippet,
-              `<scrape_result>`,
-              result.scrapedContent,
-              `</scrape_result>`,
+              `<url_summary>`,
+              result.summary,
+              `</url_summary>`,
             ].join("\n\n"),
           ),
         ].join("\n\n"),
@@ -82,7 +82,7 @@ export class SystemContext {
   }
 
   getScrapeHistory(): string {
-    return ""; // No longer used since scrape results are included in search history
+    return ""; // No longer used since summaries are included in search history
   }
 
   getInitialQuestion(): string {

@@ -5,8 +5,9 @@ import { env } from "~/env";
 import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
+import { summarizeURLs } from "~/summarize-url";
 import { SystemContext } from "~/system-context";
-import type { Action, OurMessageAnnotation, UserLocation } from "~/types";
+import type { Action, OurMessageAnnotation, SummarizeURLInput, UserLocation } from "~/types";
 
 // Create cached version of bulkCrawlWebsites
 const cachedBulkCrawlWebsites = cacheWithRedis(
@@ -15,9 +16,13 @@ const cachedBulkCrawlWebsites = cacheWithRedis(
 );
 
 /**
- * Search the web and automatically scrape the most relevant URLs
+ * Search the web, scrape URLs, and automatically summarize content
  */
-export async function searchAndScrape(context: SystemContext, query: string): Promise<void> {
+export async function searchAndScrape(
+  context: SystemContext, 
+  query: string,
+  langfuseTraceId?: string
+): Promise<void> {
   console.log("🔍 Searching and scraping for:", query);
   
   try {
@@ -56,24 +61,53 @@ export async function searchAndScrape(context: SystemContext, query: string): Pr
       console.log("⚠️ Scraping completed with some errors");
     }
     
-    // Combine search results with scraped content
+    // Prepare inputs for summarization
+    const conversationHistory = context.getFullConversationMessages();
+    const summarizationInputs: SummarizeURLInput[] = searchResults.organic
+      .slice(0, env.MAX_PAGES_TO_SCRAPE)
+      .map(result => ({
+        conversationHistory,
+        scrapedContent: scrapeContentMap.get(result.link) ?? "Failed to scrape content",
+        searchMetadata: {
+          title: result.title,
+          url: result.link,
+          snippet: result.snippet,
+          date: result.date,
+        },
+        query,
+      }));
+    
+    console.log("📝 Starting URL summarization for", summarizationInputs.length, "URLs");
+    
+    // Summarize all URLs in parallel
+    const summaryResults = await summarizeURLs(summarizationInputs, langfuseTraceId);
+    
+    console.log("✅ URL summarization completed");
+    
+    // Create a map of URL to summary
+    const summaryMap = new Map<string, string>();
+    summaryResults.forEach(result => {
+      summaryMap.set(result.url, result.summary);
+    });
+    
+    // Combine search results with summaries
     const combinedResults = searchResults.organic.slice(0, env.MAX_PAGES_TO_SCRAPE).map(result => ({
       title: result.title,
       url: result.link,
       snippet: result.snippet,
       date: result.date ?? "",
-      scrapedContent: scrapeContentMap.get(result.link) ?? "Failed to scrape content",
+      summary: summaryMap.get(result.link) ?? "Failed to generate summary",
     }));
     
-    // Report the combined search with scraped content
+    // Report the combined search with summarized content
     context.reportSearch({
       query,
       results: combinedResults,
     });
     
-    console.log("✅ Combined search and scrape completed");
+    console.log("✅ Combined search, scrape, and summarization completed");
   } catch (error) {
-    console.error("❌ Search and scrape error:", error);
+    console.error("❌ Search, scrape, and summarization error:", error);
     
     // Report empty results on error
     context.reportSearch({
@@ -125,7 +159,7 @@ export async function runAgentLoop(
         console.error("❌ Search action missing query");
         break;
       }
-      await searchAndScrape(ctx, nextAction.query);
+      await searchAndScrape(ctx, nextAction.query, langfuseTraceId);
     } else if (nextAction.type === "answer") {
       console.log("🎯 Ready to answer the question");
       return answerQuestion(ctx, { 
