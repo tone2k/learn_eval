@@ -48,6 +48,7 @@ export const actionSchema = z.object({
 
 export const getNextAction = async (
   context: SystemContext,
+  langfuseTraceId?: string,
 ): Promise<Action> => {
   // Get current date for the system prompt
   const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -60,6 +61,15 @@ export const getNextAction = async (
   const result = await generateObject({
     model: defaultModel,
     schema: actionSchema,
+    experimental_telemetry: langfuseTraceId ? {
+      isEnabled: true,
+      functionId: "get-next-action",
+      metadata: {
+        langfuseTraceId: langfuseTraceId,
+      },
+    } : {
+      isEnabled: false,
+    },
     prompt: `Current date: ${currentDate}
 
 You are a helpful AI assistant that needs to choose the next action to take in a deep search conversation.
@@ -202,8 +212,11 @@ export async function streamFromDeepSearch(opts: {
   const lastMessage = opts.messages[opts.messages.length - 1];
   const userQuestion = lastMessage?.content || "";
   
+  // Extract langfuseTraceId from telemetry metadata if available
+  const langfuseTraceId = opts.telemetry.isEnabled ? opts.telemetry.metadata?.langfuseTraceId as string | undefined : undefined;
+  
   // Run the agent loop and wait for the result
-  const result = await runAgentLoop(userQuestion, undefined, opts.writeMessageAnnotation);
+  const result = await runAgentLoop(userQuestion, undefined, opts.writeMessageAnnotation, langfuseTraceId);
   
   return result;
 };

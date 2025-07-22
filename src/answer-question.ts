@@ -12,7 +12,8 @@ interface AnswerOptions {
  */
 export function answerQuestion(
   context: SystemContext,
-  options: AnswerOptions = {}
+  options: AnswerOptions = {},
+  langfuseTraceId?: string
 ): StreamTextResult<{}, string> {
   const { isFinal = false } = options;
   
@@ -201,5 +202,14 @@ Remember: You're that friend who can explain anything clearly. Be warm, knowledg
         chunking: "word",
       }),
     ],
+    experimental_telemetry: langfuseTraceId ? {
+      isEnabled: true,
+      functionId: "answer-question",
+      metadata: {
+        langfuseTraceId: langfuseTraceId,
+      },
+    } : {
+      isEnabled: false,
+    },
   });
 } 
