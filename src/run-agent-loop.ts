@@ -15,77 +15,71 @@ const cachedBulkCrawlWebsites = cacheWithRedis(
 );
 
 /**
- * Search the web using Serper API
+ * Search the web and automatically scrape the most relevant URLs
  */
-export async function searchWeb(context: SystemContext, query: string): Promise<void> {
-  console.log("🔍 Searching the web for:", query);
+export async function searchAndScrape(context: SystemContext, query: string): Promise<void> {
+  console.log("🔍 Searching and scraping for:", query);
   
   try {
-    const results = await searchSerper(
+    // First, search the web
+    const searchResults = await searchSerper(
       { q: query, num: env.SEARCH_RESULTS_COUNT }, 
       undefined
     );
     
-    // Convert to the format expected by SystemContext
-    const queryResult = {
-      query,
-      results: results.organic.map(result => ({
-        title: result.title,
-        url: result.link,
-        snippet: result.snippet,
-        date: result.date ?? "",
-      })),
-    };
+    console.log("✅ Search completed, found", searchResults.organic.length, "results");
     
-    context.reportQueries([queryResult]);
-    console.log("✅ Search completed, found", results.organic.length, "results");
-  } catch (error) {
-    console.error("❌ Search error:", error);
-    // Report empty results on error
-    context.reportQueries([{
-      query,
-      results: [],
-    }]);
-  }
-}
-
-/**
- * Scrape URLs and extract content
- */
-export async function scrapeUrl(context: SystemContext, urls: string[]): Promise<void> {
-  console.log("🌐 Scraping URLs:", urls);
-  
-  try {
-    const results = await cachedBulkCrawlWebsites({ urls });
+    // Get the most relevant URLs to scrape (up to MAX_PAGES_TO_SCRAPE)
+    const urlsToScrape = searchResults.organic
+      .slice(0, env.MAX_PAGES_TO_SCRAPE)
+      .map(result => result.link);
     
-    if (results.success) {
-      const scrapeResults = results.results.map(r => ({
-        url: r.url,
-        result: r.result.data,
-      }));
-      
-      context.reportScrapes(scrapeResults);
+    console.log("🌐 Scraping URLs:", urlsToScrape);
+    
+    // Scrape the URLs
+    const scrapeResults = await cachedBulkCrawlWebsites({ urls: urlsToScrape });
+    
+    // Create a map of URL to scraped content
+    const scrapeContentMap = new Map<string, string>();
+    
+    if (scrapeResults.success) {
+      scrapeResults.results.forEach(r => {
+        scrapeContentMap.set(r.url, r.result.data);
+      });
       console.log("✅ Scraping completed successfully");
     } else {
       // Handle partial failures
-      const scrapeResults = results.results.map(r => ({
-        url: r.url,
-        result: r.result.success ? r.result.data : `Error: ${(r.result as { error: string }).error}`,
-      }));
-      
-      context.reportScrapes(scrapeResults);
+      scrapeResults.results.forEach(r => {
+        const content = r.result.success ? r.result.data : `Error: ${(r.result as { error: string }).error}`;
+        scrapeContentMap.set(r.url, content);
+      });
       console.log("⚠️ Scraping completed with some errors");
     }
-  } catch (error) {
-    console.error("❌ Scraping error:", error);
     
-    // Report error results
-    const errorResults = urls.map(url => ({
-      url,
-      result: `Error: Failed to scrape ${url}`,
+    // Combine search results with scraped content
+    const combinedResults = searchResults.organic.slice(0, env.MAX_PAGES_TO_SCRAPE).map(result => ({
+      title: result.title,
+      url: result.link,
+      snippet: result.snippet,
+      date: result.date ?? "",
+      scrapedContent: scrapeContentMap.get(result.link) ?? "Failed to scrape content",
     }));
     
-    context.reportScrapes(errorResults);
+    // Report the combined search with scraped content
+    context.reportSearch({
+      query,
+      results: combinedResults,
+    });
+    
+    console.log("✅ Combined search and scrape completed");
+  } catch (error) {
+    console.error("❌ Search and scrape error:", error);
+    
+    // Report empty results on error
+    context.reportSearch({
+      query,
+      results: [],
+    });
   }
 }
 
@@ -131,13 +125,7 @@ export async function runAgentLoop(
         console.error("❌ Search action missing query");
         break;
       }
-      await searchWeb(ctx, nextAction.query);
-    } else if (nextAction.type === "scrape") {
-      if (!nextAction.urls || nextAction.urls.length === 0) {
-        console.error("❌ Scrape action missing URLs");
-        break;
-      }
-      await scrapeUrl(ctx, nextAction.urls);
+      await searchAndScrape(ctx, nextAction.query);
     } else if (nextAction.type === "answer") {
       console.log("🎯 Ready to answer the question");
       return answerQuestion(ctx, { 

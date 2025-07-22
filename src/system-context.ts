@@ -1,31 +1,18 @@
 import type { Message } from "ai";
 import type { UserLocation } from "~/types";
 
-type QueryResultSearchResult = {
+type SearchResult = {
   date: string;
   title: string;
   url: string;
   snippet: string;
+  scrapedContent: string;
 };
 
-type QueryResult = {
+type SearchHistoryEntry = {
   query: string;
-  results: QueryResultSearchResult[];
+  results: SearchResult[];
 };
-
-type ScrapeResult = {
-  url: string;
-  result: string;
-};
-
-const toQueryResult = (
-  query: QueryResultSearchResult,
-) =>
-  [
-    `### ${query.date} - ${query.title}`,
-    query.url,
-    query.snippet,
-  ].join("\n\n");
 
 export class SystemContext {
   /**
@@ -39,14 +26,9 @@ export class SystemContext {
   private readonly conversationMessages: Message[];
 
   /**
-   * The history of all queries searched
+   * The history of all searches performed, including scraped content
    */
-  private queryHistory: QueryResult[] = [];
-
-  /**
-   * The history of all URLs scraped
-   */
-  private scrapeHistory: ScrapeResult[] = [];
+  private searchHistory: SearchHistoryEntry[] = [];
 
   /**
    * User's location information
@@ -70,36 +52,37 @@ export class SystemContext {
     return this.step;
   }
 
-  reportQueries(queries: QueryResult[]) {
-    this.queryHistory.push(...queries);
+  reportSearch(search: SearchHistoryEntry) {
+    this.searchHistory.push(search);
   }
 
-  reportScrapes(scrapes: ScrapeResult[]) {
-    this.scrapeHistory.push(...scrapes);
-  }
-
-  getQueryHistory(): string {
-    return this.queryHistory
-      .map((query) =>
+  getSearchHistory(): string {
+    return this.searchHistory
+      .map((search) =>
         [
-          `## Query: "${query.query}"`,
-          ...query.results.map(toQueryResult),
+          `## Query: "${search.query}"`,
+          ...search.results.map((result) =>
+            [
+              `### ${result.date} - ${result.title}`,
+              result.url,
+              result.snippet,
+              `<scrape_result>`,
+              result.scrapedContent,
+              `</scrape_result>`,
+            ].join("\n\n"),
+          ),
         ].join("\n\n"),
       )
       .join("\n\n");
+  }
+
+  // Keep these methods for backward compatibility during transition
+  getQueryHistory(): string {
+    return this.getSearchHistory();
   }
 
   getScrapeHistory(): string {
-    return this.scrapeHistory
-      .map((scrape) =>
-        [
-          `## Scrape: "${scrape.url}"`,
-          `<scrape_result>`,
-          scrape.result,
-          `</scrape_result>`,
-        ].join("\n\n"),
-      )
-      .join("\n\n");
+    return ""; // No longer used since scrape results are included in search history
   }
 
   getInitialQuestion(): string {

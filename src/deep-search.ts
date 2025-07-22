@@ -25,23 +25,16 @@ export const actionSchema = z.object({
     .string()
     .describe("The reason you chose this step."),
   type: z
-    .enum(["search", "scrape", "answer"])
+    .enum(["search", "answer"])
     .describe(
       `The type of action to take.
-      - 'search': Search the web for more information.
-      - 'scrape': Scrape a URL.
+      - 'search': Search the web for information and automatically scrape the most relevant URLs found.
       - 'answer': Answer the user's question and complete the loop.`,
     ),
   query: z
     .string()
     .describe(
       "The query to search for. Required if type is 'search'.",
-    )
-    .optional(),
-  urls: z
-    .array(z.string())
-    .describe(
-      "The URLs to scrape. Required if type is 'scrape'.",
     )
     .optional(),
 });
@@ -80,23 +73,20 @@ DATE AWARENESS:
 - Pay attention to publication dates in search results to ensure information freshness
 
 AVAILABLE ACTIONS:
-1. search - Search the web for more information using Google search
-   - Use this when you need to find relevant pages and get an overview of available information
+1. search - Search the web for information and automatically scrape relevant URLs
+   - Use this when you need to find and extract detailed information from web pages
+   - The system will automatically search for relevant pages AND scrape their content
    - Include specific search terms that would help find the most relevant results
    - Consider using date-specific terms when looking for recent information
+   - The system will fetch up to ${env.MAX_PAGES_TO_SCRAPE} most relevant pages and extract their full content
 
-2. scrape - Scrape specific URLs to get detailed content
-   - Use this when you have identified specific URLs that contain the information needed
-   - Select the most relevant URLs that would provide comprehensive answers
-   - Typically scrape up to ${env.MAX_PAGES_TO_SCRAPE} most relevant pages
-
-3. answer - Answer the user's question and complete the loop
+2. answer - Answer the user's question and complete the loop
    - Use this when you have gathered sufficient information to provide a comprehensive answer
-   - Only choose this when you have enough context from previous searches and scrapes
+   - Only choose this when you have enough context from previous searches
 
 ACTION SELECTION STRATEGY:
 - ALWAYS start with 'search' unless you already have sufficient information to answer
-- After searching, use 'scrape' to get detailed content from the most relevant URLs found
+- The search action will automatically find AND scrape the most relevant content, eliminating the need for separate scraping decisions
 - Only use 'answer' when you have comprehensive information to fully address the user's question
 - For ANY question requiring factual, current, or specific information, you MUST search first
 - Only skip searching for clearly conversational messages like greetings or thanks
@@ -109,9 +99,7 @@ MOST RECENT USER MESSAGE: "${context.getLatestUserMessage()}"
 FIRST USER QUESTION: "${context.getInitialQuestion()}"
 
 CONTEXT HISTORY:
-${context.getQueryHistory()}
-
-${context.getScrapeHistory()}
+${context.getSearchHistory()}
 
 Based on the conversation history and the user's most recent message, determine the next action to take. 
 
