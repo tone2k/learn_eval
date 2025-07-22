@@ -1,12 +1,34 @@
 import type { Message } from "ai";
+import { generateText } from "ai";
 import { and, desc, eq } from "drizzle-orm";
+import { defaultModel } from "~/models";
 import { db } from "./index";
 import { chats, messages } from "./schema";
+
+export const generateChatTitle = async (
+  messages: Message[],
+): Promise<string> => {
+  const { text } = await generateText({
+    model: defaultModel,
+    system: `You are a chat title generator.
+      You will be given a chat history, and you will need to generate a title for the chat.
+      The title should be a single sentence that captures the essence of the chat.
+      The title should be no more than 50 characters.
+      The title should be in the same language as the chat history.
+      `,
+    prompt: `Here is the chat history:
+
+      ${messages.map((m) => m.content).join("\n")}
+    `,
+  });
+
+  return text;
+};
 
 export const upsertChat = async (opts: {
   userId: string;
   chatId: string;
-  title: string;
+  title?: string;
   messages: Message[];
 }) => {
   const { userId, chatId, title, messages: newMessages } = opts;
@@ -30,13 +52,13 @@ export const upsertChat = async (opts: {
       await tx.insert(chats)
         .values({
           id: chatId,
-          title,
+          title: title ?? "New Chat",
           userId,
         })
         .onConflictDoNothing(); // Prevents duplicate key errors
     } else {
-      // Update existing chat only if title changed
-      if (existingChat[0]?.title !== title) {
+      // Update existing chat only if title is provided and changed
+      if (title && existingChat[0]?.title !== title) {
         await tx
           .update(chats)
           .set({

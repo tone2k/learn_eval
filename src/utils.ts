@@ -35,4 +35,6 @@ export function isNewChatCreated(
     "type" in data &&
     data.type === "NEW_CHAT_CREATED"
   );
-} 
+}
+
+ 

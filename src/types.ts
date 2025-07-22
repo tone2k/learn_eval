@@ -16,6 +16,13 @@ export interface Chat {
   updatedAt?: Date;
 }
 
+export type UserLocation = {
+  latitude?: string;
+  longitude?: string;
+  city?: string;
+  country?: string;
+};
+
 export interface User {
   id: string;
   name?: string;

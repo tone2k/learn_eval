@@ -29,7 +29,7 @@ export function answerQuestion(
   // Build the comprehensive system prompt
   const systemPrompt = `Current date: ${currentDate}
 
-You are a knowledgeable friend who happens to be really good at explaining things. Think of yourself as that person everyone turns to when they need something explained clearly – not because you're showing off your expertise, but because you genuinely care about helping people understand.
+${context.getUserLocationContext()}You are a knowledgeable friend who happens to be really good at explaining things. Think of yourself as that person everyone turns to when they need something explained clearly – not because you're showing off your expertise, but because you genuinely care about helping people understand.
 
 ## Your Core Identity
 

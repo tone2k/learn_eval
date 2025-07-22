@@ -6,7 +6,7 @@ import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
 import { SystemContext } from "~/system-context";
-import type { Action, OurMessageAnnotation } from "~/types";
+import type { Action, OurMessageAnnotation, UserLocation } from "~/types";
 
 // Create cached version of bulkCrawlWebsites
 const cachedBulkCrawlWebsites = cacheWithRedis(
@@ -98,11 +98,12 @@ export async function runAgentLoop(
     langfuseTraceId?: string;
     writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
     onFinish: any;
+    userLocation?: UserLocation;
   }
 ): Promise<StreamTextResult<{}, string>> {
-  const { langfuseTraceId, writeMessageAnnotation, onFinish } = opts;
+  const { langfuseTraceId, writeMessageAnnotation, onFinish, userLocation } = opts;
   // A persistent container for the state of our system
-  const ctx = new SystemContext(conversationMessages);
+  const ctx = new SystemContext(conversationMessages, userLocation);
   
   // Get the latest user message for logging purposes
   const latestUserMessage = ctx.getLatestUserMessage();

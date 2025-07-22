@@ -12,7 +12,7 @@ import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
 import type { SystemContext } from "~/system-context";
-import type { Action, OurMessageAnnotation } from "~/types";
+import type { Action, OurMessageAnnotation, UserLocation } from "~/types";
 
 // Action schema for structured outputs - avoiding z.union for better LLM compatibility
 export const actionSchema = z.object({
@@ -72,7 +72,7 @@ export const getNextAction = async (
     },
     prompt: `Current date: ${currentDate}
 
-You are a helpful AI assistant that needs to choose the next action to take in a deep search conversation.
+${context.getUserLocationContext()}You are a helpful AI assistant that needs to choose the next action to take in a deep search conversation.
 
 DATE AWARENESS:
 - Today's date is ${currentDate}
@@ -214,6 +214,7 @@ export async function streamFromDeepSearch(opts: {
   onFinish: any;
   telemetry: TelemetrySettings;
   writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
+  userLocation?: UserLocation;
 }): Promise<StreamTextResult<{}, string>> {
   // Extract langfuseTraceId from telemetry metadata if available
   const langfuseTraceId = opts.telemetry.isEnabled ? opts.telemetry.metadata?.langfuseTraceId as string | undefined : undefined;
@@ -223,18 +224,20 @@ export async function streamFromDeepSearch(opts: {
     langfuseTraceId,
     writeMessageAnnotation: opts.writeMessageAnnotation,
     onFinish: opts.onFinish,
+    userLocation: opts.userLocation,
   });
   
   return result;
 };
 
-export async function askDeepSearch(messages: Message[]) {
+export async function askDeepSearch(messages: Message[], userLocation?: UserLocation) {
   const result = await streamFromDeepSearch({
     messages,
     onFinish: () => {}, // just a stub
     telemetry: {
       isEnabled: false,
     },
+    userLocation,
   });
 
   // Consume the stream - without this,

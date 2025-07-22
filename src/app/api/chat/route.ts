@@ -1,12 +1,13 @@
+import { geolocation } from "@vercel/functions";
 import type { Message } from "ai";
 import { appendResponseMessages, createDataStreamResponse } from "ai";
 import { Langfuse } from "langfuse";
 import { streamFromDeepSearch } from "~/deep-search";
 import { env } from "~/env";
 import { auth } from "~/server/auth";
-import { getChat, upsertChat } from "~/server/db/queries";
+import { generateChatTitle, getChat, upsertChat } from "~/server/db/queries";
 import { checkRateLimit, recordRateLimit, type RateLimitConfig } from "~/server/rate-limit";
-import type { OurMessageAnnotation } from "~/types";
+import type { OurMessageAnnotation, UserLocation } from "~/types";
 
 const langfuse = new Langfuse({
   environment: env.NODE_ENV,
@@ -58,6 +59,25 @@ function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
   return transformedMessage;
 }
 
+function getUserLocation(request: Request): UserLocation {
+  // Mock location data for development
+  if (env.NODE_ENV === "development") {
+    const mockRequest = new Request(request);
+    mockRequest.headers.set("x-vercel-ip-country", "US");
+    mockRequest.headers.set("x-vercel-ip-country-region", "CA");
+    mockRequest.headers.set("x-vercel-ip-city", "San Francisco");
+    mockRequest.headers.set("x-vercel-ip-latitude", "37.7749");
+    mockRequest.headers.set("x-vercel-ip-longitude", "-122.4194");
+    
+    const { longitude, latitude, city, country } = geolocation(mockRequest);
+    return { longitude, latitude, city, country };
+  }
+
+  // Use actual geolocation in production
+  const { longitude, latitude, city, country } = geolocation(request);
+  return { longitude, latitude, city, country };
+}
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -103,6 +123,10 @@ export async function POST(req: Request) {
       console.log("❌ No session, returning 401");
       return new Response("Unauthorized", { status: 401 });
     }
+
+    // Get user's location information
+    const userLocation = getUserLocation(req);
+    console.log("📍 User location:", userLocation);
 
     // Check rate limit for authenticated users
     console.log("🚦 Checking rate limit...");
@@ -152,42 +176,47 @@ export async function POST(req: Request) {
 
     let conversationMessages: Message[] = messages;
 
+    // Start generating title in parallel for new chats
+    let titlePromise: Promise<string> | undefined;
+    
     // First, check if this chat already exists in the database
     const checkExistingChat = await getChat({ chatId, userId: session.user.id });
     
     if (isNewChat && !checkExistingChat) {
-      // This is truly a new chat - create it
-        // For new chats, create the chat with initial user message(s)
-        const firstUserMessage = messages.find(m => m.role === "user");
-        const title = typeof firstUserMessage?.content === "string" 
-          ? firstUserMessage.content.slice(0, 100) 
-          : "New Chat";
-        
-        console.log("🆕 Creating new chat:", chatId, "with title:", title);
-        
-        const createChatSpan = trace.span({
-          name: "create-new-chat",
-          input: {
-            userId: session.user.id,
-            chatId,
-            title,
-            messages: messages.filter(m => m.role === "user"),
-          },
-        });
-        
-        await upsertChat({
+      // This is truly a new chat - start generating title in parallel
+      titlePromise = generateChatTitle(messages);
+      
+      console.log("🆕 Creating new chat:", chatId, "with generating title...");
+      
+      const createChatSpan = trace.span({
+        name: "create-new-chat",
+        input: {
           userId: session.user.id,
-          chatId: chatId,
-          title,
+          chatId,
+          title: "Generating...",
           messages: messages.filter(m => m.role === "user"),
-        });
-        
-        createChatSpan.end({
-          output: {
-            chatId,
-          },
-        });
+        },
+      });
+      
+      // Create the chat with temporary title while we generate the real one
+      await upsertChat({
+        userId: session.user.id,
+        chatId: chatId,
+        title: "Generating...",
+        messages: messages.filter(m => m.role === "user"),
+      });
+      
+      createChatSpan.end({
+        output: {
+          chatId,
+        },
+      });
     } else {
+      // Not a new chat, resolve empty string
+      titlePromise = Promise.resolve("");
+    }
+    
+    if (!isNewChat || checkExistingChat) {
       // This is an existing chat - verify ownership and load messages
       // For existing chats, load the complete conversation history
       console.log("📖 Loading existing chat:", chatId);
@@ -261,6 +290,7 @@ export async function POST(req: Request) {
             // Send it to the client
             dataStream.writeMessageAnnotation(annotation as any);
           },
+          userLocation,
           onFinish: async ({ response }: any) => {
             console.log("onFinish", response);
             
@@ -279,18 +309,15 @@ export async function POST(req: Request) {
               // Add the annotations to the last message
               (lastMessage as any).annotations = annotations;
 
-              // Extract title from the first user message
-              const firstUserMessage = updatedMessages.find(m => m.role === "user");
-              const title = typeof firstUserMessage?.content === "string" 
-                ? firstUserMessage.content.slice(0, 50) + "..." 
-                : "New Chat";
+              // Await the title generation if it was started
+              const generatedTitle = titlePromise ? await titlePromise : "";
 
-              // Save the complete chat history
+              // Save the complete chat history with generated title (if available)
               await upsertChat({
                 userId: session.user.id,
                 chatId,
-                title,
                 messages: updatedMessages,
+                ...(generatedTitle ? { title: generatedTitle } : {}),
               });
 
               await langfuse.flushAsync();
