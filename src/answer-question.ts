@@ -168,6 +168,11 @@ A balanced diet typically consists of **45-65% carbohydrates**, **10-35% protein
 
 USER QUERY: "${context.getInitialQuestion()}"
 
+CONVERSATION HISTORY:
+${context.getConversationHistory()}
+
+MOST RECENT USER MESSAGE: "${context.getLatestUserMessage()}"
+
 INFORMATION GATHERED:
 ${context.getQueryHistory()}
 
@@ -176,7 +181,7 @@ ${context.getScrapeHistory()}
 ${isFinal ? `
 IMPORTANT: This is the final attempt to answer the question. You may not have all the information needed to provide a complete answer, but you must make your best effort to answer based on the available information. If the information is insufficient, acknowledge the limitations and provide the best answer possible with the available data.
 ` : `
-TASK: Based on the information gathered above, provide a comprehensive and accurate answer to the user's question.
+TASK: Based on the conversation history and information gathered above, provide a comprehensive and accurate answer to the user's most recent message while considering the context of the entire conversation.
 `}
 
 RESPONSE REQUIREMENTS:
@@ -189,6 +194,7 @@ RESPONSE REQUIREMENTS:
 7. If information is incomplete, acknowledge limitations honestly
 8. Structure your response clearly with proper formatting
 9. Place all footnote definitions at the very end of your response
+10. **IMPORTANT**: Pay close attention to the conversation history. If the user is asking a follow-up question that references previous parts of the conversation (like "that's not working" or "tell me more about X"), make sure your answer directly addresses what they're referring to based on the conversation context.
 
 Remember: You're that friend who can explain anything clearly. Be warm, knowledgeable, and genuinely helpful while following the formatting rules precisely.`;
 

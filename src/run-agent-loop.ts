@@ -1,4 +1,4 @@
-import type { StreamTextResult } from "ai";
+import type { Message, StreamTextResult } from "ai";
 import { answerQuestion } from "~/answer-question";
 import { getNextAction } from "~/deep-search";
 import { env } from "~/env";
@@ -93,15 +93,17 @@ export async function scrapeUrl(context: SystemContext, urls: string[]): Promise
  * Main agent loop implementation
  */
 export async function runAgentLoop(
-  initialQuestion: string,
+  conversationMessages: Message[],
   initialContext?: SystemContext,
   writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void,
   langfuseTraceId?: string
 ): Promise<StreamTextResult<{}, string>> {
   // A persistent container for the state of our system
-  const ctx = initialContext ?? new SystemContext(initialQuestion);
+  const ctx = initialContext ?? new SystemContext(conversationMessages);
   
-  console.log("🤖 Starting agent loop for query:", initialQuestion);
+  // Get the latest user message for logging purposes
+  const latestUserMessage = ctx.getLatestUserMessage();
+  console.log("🤖 Starting agent loop for query:", latestUserMessage);
   
   // A loop that continues until we have an answer or we've taken 10 actions
   while (!ctx.shouldStop()) {

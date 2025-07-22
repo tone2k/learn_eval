@@ -1,3 +1,5 @@
+import type { Message } from "ai";
+
 type QueryResultSearchResult = {
   date: string;
   title: string;
@@ -31,9 +33,9 @@ export class SystemContext {
   private step = 0;
 
   /**
-   * The initial question that started this search
+   * The full conversation history
    */
-  private readonly initialQuestion: string;
+  private readonly conversationMessages: Message[];
 
   /**
    * The history of all queries searched
@@ -45,8 +47,8 @@ export class SystemContext {
    */
   private scrapeHistory: ScrapeResult[] = [];
 
-  constructor(initialQuestion: string) {
-    this.initialQuestion = initialQuestion;
+  constructor(conversationMessages: Message[]) {
+    this.conversationMessages = conversationMessages;
   }
 
   shouldStop() {
@@ -94,6 +96,30 @@ export class SystemContext {
   }
 
   getInitialQuestion(): string {
-    return this.initialQuestion;
+    // Get the first user message from the conversation
+    const firstUserMessage = this.conversationMessages.find(m => m.role === "user");
+    return firstUserMessage?.content?.toString() ?? "";
+  }
+
+  getLatestUserMessage(): string {
+    // Get the most recent user message
+    const userMessages = this.conversationMessages.filter(m => m.role === "user");
+    const latestMessage = userMessages[userMessages.length - 1];
+    return latestMessage?.content?.toString() ?? "";
+  }
+
+  getConversationHistory(): string {
+    // Format the conversation history for use in prompts
+    return this.conversationMessages
+      .map((message) => {
+        const role = message.role === "user" ? "Human" : "Assistant";
+        const content = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
+        return `${role}: ${content}`;
+      })
+      .join("\n\n");
+  }
+
+  getFullConversationMessages(): Message[] {
+    return this.conversationMessages;
   }
 } 

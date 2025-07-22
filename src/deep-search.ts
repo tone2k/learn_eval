@@ -101,14 +101,21 @@ ACTION SELECTION STRATEGY:
 - For ANY question requiring factual, current, or specific information, you MUST search first
 - Only skip searching for clearly conversational messages like greetings or thanks
 
-USER'S ORIGINAL QUESTION: "${context.getInitialQuestion()}"
+CONVERSATION HISTORY:
+${context.getConversationHistory()}
+
+MOST RECENT USER MESSAGE: "${context.getLatestUserMessage()}"
+
+FIRST USER QUESTION: "${context.getInitialQuestion()}"
 
 CONTEXT HISTORY:
 ${context.getQueryHistory()}
 
 ${context.getScrapeHistory()}
 
-Based on the user's question and the conversation history above, determine the next action to take.`,
+Based on the conversation history and the user's most recent message, determine the next action to take. 
+
+IMPORTANT: Pay close attention to the conversation history above. If the user is asking a follow-up question that references previous parts of the conversation (like "that's not working" or "can you explain more about X"), make sure to understand what they're referring to based on the conversation context. Use this context to inform your search queries and action selection.`,
   });
 
   return result.object as Action;
@@ -208,15 +215,11 @@ export async function streamFromDeepSearch(opts: {
   telemetry: TelemetrySettings;
   writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
 }): Promise<StreamTextResult<{}, string>> {
-  // Extract the user's question from the last message
-  const lastMessage = opts.messages[opts.messages.length - 1];
-  const userQuestion = lastMessage?.content || "";
-  
   // Extract langfuseTraceId from telemetry metadata if available
   const langfuseTraceId = opts.telemetry.isEnabled ? opts.telemetry.metadata?.langfuseTraceId as string | undefined : undefined;
   
-  // Run the agent loop and wait for the result
-  const result = await runAgentLoop(userQuestion, undefined, opts.writeMessageAnnotation, langfuseTraceId);
+  // Run the agent loop with the full conversation history
+  const result = await runAgentLoop(opts.messages, undefined, opts.writeMessageAnnotation, langfuseTraceId);
   
   return result;
 };
