@@ -6,7 +6,7 @@ import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
 import { SystemContext } from "~/system-context";
-import type { Action } from "~/types";
+import type { Action, OurMessageAnnotation } from "~/types";
 
 // Create cached version of bulkCrawlWebsites
 const cachedBulkCrawlWebsites = cacheWithRedis(
@@ -94,7 +94,8 @@ export async function scrapeUrl(context: SystemContext, urls: string[]): Promise
  */
 export async function runAgentLoop(
   initialQuestion: string,
-  initialContext?: SystemContext
+  initialContext?: SystemContext,
+  writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void
 ): Promise<StreamTextResult<{}, string>> {
   // A persistent container for the state of our system
   const ctx = initialContext ?? new SystemContext(initialQuestion);
@@ -108,6 +109,14 @@ export async function runAgentLoop(
     // We choose the next action based on the state of our system
     const nextAction: Action = await getNextAction(ctx);
     console.log("🎯 Next action:", nextAction);
+    
+    // Send progress annotation to the UI
+    if (writeMessageAnnotation) {
+      writeMessageAnnotation({
+        type: "NEW_ACTION",
+        action: nextAction,
+      });
+    }
     
     // We execute the action and update the state of our system
     if (nextAction.type === "search") {

@@ -1,5 +1,7 @@
 import type { Message } from "@ai-sdk/react";
 import ReactMarkdown, { type Components } from "react-markdown";
+import type { OurMessageAnnotation } from "~/types";
+import { ReasoningSteps } from "./reasoning-steps";
 
 interface ChatMessageProps {
   message: Message;
@@ -41,6 +43,11 @@ const Markdown = ({ children }: { children: string }) => {
 export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
   const isAI = message.role === "assistant";
 
+  // Get annotations if available and filter for NEW_ACTION type
+  const annotations = (message.annotations as OurMessageAnnotation[] | undefined)?.filter(
+    (annotation) => annotation.type === "NEW_ACTION"
+  ) || [];
+
   return (
     <div className="mb-6">
       <div
@@ -50,6 +57,11 @@ export const ChatMessage = ({ message, userName }: ChatMessageProps) => {
         <p className="mb-2 text-sm font-semibold text-gray-400">
           {isAI ? "AI" : userName}
         </p>
+
+        {/* Show reasoning steps only for AI messages with annotations */}
+        {isAI && annotations.length > 0 && (
+          <ReasoningSteps annotations={annotations} />
+        )}
 
         <div className="prose prose-invert max-w-none">
           {message.parts && message.parts.length > 0 ? (

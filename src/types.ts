@@ -40,16 +40,28 @@ export interface WebSearchResponse {
 
 export interface SearchAction {
   type: "search";
+  title: string;
+  reasoning: string;
   query: string;
 }
 
 export interface ScrapeAction {
   type: "scrape";
+  title: string;
+  reasoning: string;
   urls: string[];
 }
 
 export interface AnswerAction {
   type: "answer";
+  title: string;
+  reasoning: string;
 }
 
-export type Action = SearchAction | ScrapeAction | AnswerAction; 
+export type Action = SearchAction | ScrapeAction | AnswerAction;
+
+// Message annotation type for progress indicators
+export type OurMessageAnnotation = {
+  type: "NEW_ACTION";
+  action: Action;
+}; 

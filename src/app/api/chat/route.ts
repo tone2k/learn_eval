@@ -1,11 +1,12 @@
 import type { Message } from "ai";
 import { appendResponseMessages, createDataStreamResponse } from "ai";
 import { Langfuse } from "langfuse";
-import { env } from "~/env";
 import { streamFromDeepSearch } from "~/deep-search";
+import { env } from "~/env";
 import { auth } from "~/server/auth";
 import { getChat, upsertChat } from "~/server/db/queries";
 import { checkRateLimit, recordRateLimit, type RateLimitConfig } from "~/server/rate-limit";
+import type { OurMessageAnnotation } from "~/types";
 
 const langfuse = new Langfuse({
   environment: env.NODE_ENV,
@@ -259,7 +260,10 @@ export async function POST(req: Request) {
               langfuseTraceId: trace.id,
             },
           },
-          onFinish: async ({ text, finishReason, usage, response }) => {
+          writeMessageAnnotation: (annotation: OurMessageAnnotation) => {
+            dataStream.writeMessageAnnotation(annotation as any);
+          },
+          onFinish: async ({ text, finishReason, usage, response }: any) => {
             console.log("🏁 Stream finished, saving to database");
             console.log("📊 Finish reason:", finishReason);
             console.log("💬 Response messages:", response.messages.length);

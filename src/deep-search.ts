@@ -1,21 +1,29 @@
 import {
-    generateObject,
-    type Message,
-    type StreamTextResult,
-    type TelemetrySettings,
+  generateObject,
+  type Message,
+  type StreamTextResult,
+  type TelemetrySettings,
 } from "ai";
 import { z } from "zod";
 import { env } from "~/env";
 import { defaultModel } from "~/models";
+import { runAgentLoop } from "~/run-agent-loop";
 import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
 import type { SystemContext } from "~/system-context";
-import type { Action } from "~/types";
-import { runAgentLoop } from "~/run-agent-loop";
+import type { Action, OurMessageAnnotation } from "~/types";
 
 // Action schema for structured outputs - avoiding z.union for better LLM compatibility
 export const actionSchema = z.object({
+  title: z
+    .string()
+    .describe(
+      "The title of the action, to be displayed in the UI. Be extremely concise. 'Searching Saka's injury history', 'Checking HMRC industrial action', 'Comparing toaster ovens'",
+    ),
+  reasoning: z
+    .string()
+    .describe("The reason you chose this step."),
   type: z
     .enum(["search", "scrape", "answer"])
     .describe(
@@ -188,13 +196,14 @@ export async function streamFromDeepSearch(opts: {
   messages: Message[];
   onFinish: any; // We'll handle this later when we tackle persistence
   telemetry: TelemetrySettings;
+  writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
 }): Promise<StreamTextResult<{}, string>> {
   // Extract the user's question from the last message
   const lastMessage = opts.messages[opts.messages.length - 1];
   const userQuestion = lastMessage?.content || "";
   
   // Run the agent loop and wait for the result
-  const result = await runAgentLoop(userQuestion);
+  const result = await runAgentLoop(userQuestion, undefined, opts.writeMessageAnnotation);
   
   return result;
 };
