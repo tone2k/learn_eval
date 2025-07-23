@@ -23,7 +23,11 @@
     "deps:update": "npm-check-updates -u",
     "audit:security": "pnpm audit",
     "audit:deps": "pnpm outdated",
-    "precommit": "pnpm run check && pnpm run deps:check"
+    "precommit": "pnpm run check && pnpm run deps:check",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.22",
