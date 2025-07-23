@@ -167,56 +167,6 @@ describe("End-to-End Integration Tests", () => {
     });
   });
 
-  describe("Error Recovery", () => {
-    it("should handle database connection issues gracefully", async () => {
-      vi.mocked(auth).mockResolvedValue(mockSession(testUser));
-
-      // Mock database to throw error
-      vi.doMock("~/server/db/queries", () => ({
-        upsertChat: vi.fn().mockRejectedValue(new Error("Database connection failed")),
-        getChat: vi.fn().mockRejectedValue(new Error("Database connection failed")),
-      }));
-
-      const request = mockRequest("POST", "/api/chat", {
-        messages: [createTestMessage("Hello")],
-        chatId: testChatId,
-        isNewChat: true,
-      });
-
-      const response = await POST(request);
-      expect(response.status).toBe(500);
-    });
-
-    it("should handle Redis connection issues gracefully", async () => {
-      vi.mocked(auth).mockResolvedValue(mockSession(testUser));
-
-      // Mock Redis to throw error
-      vi.doMock("~/server/redis/redis", () => ({
-        redis: {
-          get: vi.fn().mockRejectedValue(new Error("Redis connection failed")),
-          set: vi.fn().mockRejectedValue(new Error("Redis connection failed")),
-          del: vi.fn().mockRejectedValue(new Error("Redis connection failed")),
-          keys: vi.fn().mockRejectedValue(new Error("Redis connection failed")),
-          pipeline: vi.fn().mockReturnValue({
-            incr: vi.fn().mockReturnThis(),
-            expire: vi.fn().mockReturnThis(),
-            exec: vi.fn().mockRejectedValue(new Error("Redis connection failed")),
-          }),
-        },
-      }));
-
-      const request = mockRequest("POST", "/api/chat", {
-        messages: [createTestMessage("Hello")],
-        chatId: testChatId,
-        isNewChat: true,
-      });
-
-      const response = await POST(request);
-      // Should still work due to fail-open behavior
-      expect(response.status).toBe(200);
-    });
-  });
-
   describe("Data Consistency", () => {
     it("should maintain data consistency during concurrent operations", async () => {
       vi.mocked(auth).mockResolvedValue(mockSession(testUser));

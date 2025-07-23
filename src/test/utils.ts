@@ -9,10 +9,10 @@ export interface TestUser {
   email: string;
 }
 
-export const createTestUser = (): TestUser => ({
-  id: "test-user-id",
-  name: "Test User",
-  email: "test@example.com",
+export const createTestUser = (overrides: Partial<TestUser> = {}): TestUser => ({
+  id: overrides.id ?? `test-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  name: overrides.name ?? "Test User",
+  email: overrides.email ?? "test@example.com",
 });
 
 export const createTestMessage = (content: string, role: "user" | "assistant" = "user"): Message => ({

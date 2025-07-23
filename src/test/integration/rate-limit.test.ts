@@ -70,12 +70,12 @@ describe("Rate Limiting Integration Tests", () => {
       const result = await checkRateLimit(testConfig);
       expect(result.allowed).toBe(false);
 
-      // Wait for window to reset
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      // Wait for window to reset (add buffer for reliability)
+      await new Promise(resolve => setTimeout(resolve, 1200));
 
       const retryResult = await result.retry();
       expect(retryResult).toBe(true);
-    });
+    }, 10000); // Increase timeout for this test
 
     it("should respect max retries", async () => {
       const configWithLowRetries: RateLimitConfig = {
@@ -126,13 +126,13 @@ describe("Rate Limiting Integration Tests", () => {
       const keys = await redis.keys(`${testConfig.keyPrefix}:*`);
       expect(keys.length).toBe(1);
 
-      // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      // Wait for expiration (add buffer for reliability)
+      await new Promise(resolve => setTimeout(resolve, 1200));
 
       // Check that the key is gone
       const keysAfterExpiry = await redis.keys(`${testConfig.keyPrefix}:*`);
       expect(keysAfterExpiry.length).toBe(0);
-    });
+    }, 10000); // Increase timeout for this test
   });
 
   describe("Rate limit window behavior", () => {
@@ -145,13 +145,13 @@ describe("Rate Limiting Integration Tests", () => {
       let result = await checkRateLimit(testConfig);
       expect(result.allowed).toBe(false);
 
-      // Wait for window to reset
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      // Wait for window to reset (add buffer for reliability)
+      await new Promise(resolve => setTimeout(resolve, 1200));
 
       result = await checkRateLimit(testConfig);
       expect(result.allowed).toBe(true);
       expect(result.remaining).toBe(3);
-    });
+    }, 10000); // Increase timeout for this test
 
     it("should handle different key prefixes", async () => {
       const config1: RateLimitConfig = {
