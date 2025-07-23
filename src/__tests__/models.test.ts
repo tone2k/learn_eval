@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the AI SDK
+const mockCreateGoogleGenerativeAI = vi.fn();
 vi.mock('@ai-sdk/google', () => ({
-  createGoogleGenerativeAI: vi.fn(() => ({
-    __esModule: true,
-    default: vi.fn(),
-  })),
+  createGoogleGenerativeAI: mockCreateGoogleGenerativeAI,
 }));
 
 // Mock the env module
@@ -18,9 +16,17 @@ vi.mock('../env', () => ({
 describe('models', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
   it('should export all required models', async () => {
+    // Mock the Google AI factory to return mock models
+    const mockGoogleAI = {
+      __esModule: true,
+      default: vi.fn((modelId) => ({ modelId, type: 'google-ai' })),
+    };
+    mockCreateGoogleGenerativeAI.mockReturnValue(mockGoogleAI);
+
     const { geminiFlash, geminiPro, defaultModel, factualityModel, summarizerModel } = await import('../models');
 
     expect(geminiFlash).toBeDefined();
@@ -31,42 +37,69 @@ describe('models', () => {
   });
 
   it('should set defaultModel to geminiPro', async () => {
+    const mockGoogleAI = {
+      __esModule: true,
+      default: vi.fn((modelId) => ({ modelId, type: 'google-ai' })),
+    };
+    mockCreateGoogleGenerativeAI.mockReturnValue(mockGoogleAI);
+
     const { defaultModel, geminiPro } = await import('../models');
 
     expect(defaultModel).toBe(geminiPro);
   });
 
   it('should set factualityModel to geminiFlash', async () => {
+    const mockGoogleAI = {
+      __esModule: true,
+      default: vi.fn((modelId) => ({ modelId, type: 'google-ai' })),
+    };
+    mockCreateGoogleGenerativeAI.mockReturnValue(mockGoogleAI);
+
     const { factualityModel, geminiFlash } = await import('../models');
 
     expect(factualityModel).toBe(geminiFlash);
   });
 
   it('should create Google AI instance with correct API key', async () => {
-    const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+    const mockGoogleAI = {
+      __esModule: true,
+      default: vi.fn((modelId) => ({ modelId, type: 'google-ai' })),
+    };
+    mockCreateGoogleGenerativeAI.mockReturnValue(mockGoogleAI);
     
     await import('../models');
 
-    expect(createGoogleGenerativeAI).toHaveBeenCalledWith({
+    expect(mockCreateGoogleGenerativeAI).toHaveBeenCalledWith({
       apiKey: 'test-api-key',
     });
   });
 
   it('should create models with correct identifiers', async () => {
-    const mockCreateGoogleGenerativeAI = vi.fn(() => ({
+    const mockGoogleAI = {
       __esModule: true,
-      default: vi.fn((modelId) => ({ modelId })),
-    }));
-
-    vi.doMock('@ai-sdk/google', () => ({
-      createGoogleGenerativeAI: mockCreateGoogleGenerativeAI,
-    }));
+      default: vi.fn((modelId) => ({ modelId, type: 'google-ai' })),
+    };
+    mockCreateGoogleGenerativeAI.mockReturnValue(mockGoogleAI);
 
     const { geminiFlash, geminiPro, summarizerModel } = await import('../models');
 
     expect(geminiFlash.modelId).toBe('gemini-1.5-flash-latest');
     expect(geminiPro.modelId).toBe('gemini-1.5-pro-latest');
     expect(summarizerModel.modelId).toBe('gemini-2.0-flash-lite');
+  });
+
+  it('should call Google AI factory with correct model IDs', async () => {
+    const mockGoogleAI = {
+      __esModule: true,
+      default: vi.fn((modelId) => ({ modelId, type: 'google-ai' })),
+    };
+    mockCreateGoogleGenerativeAI.mockReturnValue(mockGoogleAI);
+
+    await import('../models');
+
+    expect(mockGoogleAI.default).toHaveBeenCalledWith('gemini-1.5-flash-latest');
+    expect(mockGoogleAI.default).toHaveBeenCalledWith('gemini-1.5-pro-latest');
+    expect(mockGoogleAI.default).toHaveBeenCalledWith('gemini-2.0-flash-lite');
   });
 
   it('should handle environment variable changes', async () => {
@@ -77,15 +110,36 @@ describe('models', () => {
       },
     }));
 
-    const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+    const mockGoogleAI = {
+      __esModule: true,
+      default: vi.fn((modelId) => ({ modelId, type: 'google-ai' })),
+    };
+    mockCreateGoogleGenerativeAI.mockReturnValue(mockGoogleAI);
     
     // Clear the module cache to force re-import
     vi.resetModules();
     
     await import('../models');
 
-    expect(createGoogleGenerativeAI).toHaveBeenCalledWith({
+    expect(mockCreateGoogleGenerativeAI).toHaveBeenCalledWith({
       apiKey: 'different-api-key',
     });
+  });
+
+  it('should create models only once per import', async () => {
+    const mockGoogleAI = {
+      __esModule: true,
+      default: vi.fn((modelId) => ({ modelId, type: 'google-ai' })),
+    };
+    mockCreateGoogleGenerativeAI.mockReturnValue(mockGoogleAI);
+
+    // Import multiple times
+    await import('../models');
+    await import('../models');
+    await import('../models');
+
+    // Should only create the Google AI instance once
+    expect(mockCreateGoogleGenerativeAI).toHaveBeenCalledTimes(1);
+    expect(mockGoogleAI.default).toHaveBeenCalledTimes(3); // Once for each model
   });
 });

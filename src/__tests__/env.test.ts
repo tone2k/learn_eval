@@ -25,7 +25,7 @@ describe('env', () => {
       if (key.startsWith('REDIS_URL') || key.startsWith('AUTH_') || key.startsWith('DATABASE_URL') || 
           key.startsWith('NODE_ENV') || key.startsWith('GOOGLE_') || key.startsWith('SERPER_') || 
           key.startsWith('LANGFUSE_') || key.startsWith('EVAL_') || key.startsWith('SEARCH_') || 
-          key.startsWith('MAX_PAGES_')) {
+          key.startsWith('MAX_PAGES_') || key.startsWith('SKIP_ENV_VALIDATION')) {
         delete process.env[key];
       }
     });
@@ -34,6 +34,9 @@ describe('env', () => {
     Object.entries(mockEnvVars).forEach(([key, value]) => {
       process.env[key] = value;
     });
+
+    // Clear module cache to ensure fresh imports
+    vi.resetModules();
   });
 
   afterEach(() => {
@@ -41,6 +44,7 @@ describe('env', () => {
     Object.keys(mockEnvVars).forEach(key => {
       delete process.env[key];
     });
+    delete process.env.SKIP_ENV_VALIDATION;
   });
 
   it('should load environment variables correctly', async () => {
@@ -70,6 +74,7 @@ describe('env', () => {
     delete process.env.SEARCH_RESULTS_COUNT;
     delete process.env.MAX_PAGES_TO_SCRAPE;
 
+    vi.resetModules();
     const { env } = await import('../env');
 
     expect(env.NODE_ENV).toBe('development');
@@ -87,6 +92,7 @@ describe('env', () => {
 
     for (const testCase of testCases) {
       process.env.NODE_ENV = testCase.env;
+      vi.resetModules();
       const { env } = await import('../env');
       expect(env.NODE_ENV).toBe(testCase.expected);
     }
@@ -101,6 +107,7 @@ describe('env', () => {
 
     for (const testCase of testCases) {
       process.env.EVAL_DATASET = testCase.dataset;
+      vi.resetModules();
       const { env } = await import('../env');
       expect(env.EVAL_DATASET).toBe(testCase.expected);
     }
@@ -110,6 +117,7 @@ describe('env', () => {
     process.env.SEARCH_RESULTS_COUNT = '10';
     process.env.MAX_PAGES_TO_SCRAPE = '15';
 
+    vi.resetModules();
     const { env } = await import('../env');
 
     expect(env.SEARCH_RESULTS_COUNT).toBe(10);
@@ -117,6 +125,7 @@ describe('env', () => {
   });
 
   it('should handle string URLs correctly', async () => {
+    vi.resetModules();
     const { env } = await import('../env');
 
     expect(env.REDIS_URL).toBe('redis://localhost:6379');
@@ -128,6 +137,7 @@ describe('env', () => {
     delete process.env.AUTH_SECRET;
     process.env.NODE_ENV = 'development';
 
+    vi.resetModules();
     const { env } = await import('../env');
     expect(env.AUTH_SECRET).toBeUndefined();
   });
@@ -136,12 +146,14 @@ describe('env', () => {
     delete process.env.AUTH_SECRET;
     process.env.NODE_ENV = 'production';
 
+    vi.resetModules();
     await expect(import('../env')).rejects.toThrow();
   });
 
   it('should validate URL format for URL environment variables', async () => {
     process.env.REDIS_URL = 'invalid-url';
     
+    vi.resetModules();
     await expect(import('../env')).rejects.toThrow();
   });
 
@@ -149,6 +161,7 @@ describe('env', () => {
     process.env.SEARCH_RESULTS_COUNT = '';
     process.env.MAX_PAGES_TO_SCRAPE = '';
 
+    vi.resetModules();
     const { env } = await import('../env');
 
     expect(env.SEARCH_RESULTS_COUNT).toBe(3); // Should use default
@@ -161,9 +174,22 @@ describe('env', () => {
     process.env.REDIS_URL = 'invalid-url';
     process.env.DATABASE_URL = 'invalid-url';
 
+    vi.resetModules();
     // Should not throw when SKIP_ENV_VALIDATION is true
     const { env } = await import('../env');
     expect(env.REDIS_URL).toBe('invalid-url');
     expect(env.DATABASE_URL).toBe('invalid-url');
+  });
+
+  it('should handle invalid numeric values gracefully', async () => {
+    process.env.SEARCH_RESULTS_COUNT = 'not-a-number';
+    process.env.MAX_PAGES_TO_SCRAPE = 'also-not-a-number';
+
+    vi.resetModules();
+    const { env } = await import('../env');
+
+    // Should use defaults when parsing fails
+    expect(env.SEARCH_RESULTS_COUNT).toBe(3);
+    expect(env.MAX_PAGES_TO_SCRAPE).toBe(6);
   });
 });

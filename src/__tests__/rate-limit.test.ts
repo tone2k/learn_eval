@@ -109,10 +109,15 @@ describe('rate-limit', () => {
       );
     });
 
-    it('should handle Redis errors gracefully', async () => {
+    it('should handle Redis errors gracefully and fail open', async () => {
       mockRedis.get.mockRejectedValue(new Error('Redis connection failed'));
 
-      await expect(checkRateLimit(baseConfig)).rejects.toThrow('Redis connection failed');
+      const result = await checkRateLimit(baseConfig);
+
+      // Should fail open (allow request) when Redis fails
+      expect(result.allowed).toBe(true);
+      expect(result.remaining).toBe(9); // maxRequests - 1
+      expect(result.totalHits).toBe(0);
     });
 
     it('should provide retry function', async () => {
@@ -160,6 +165,16 @@ describe('rate-limit', () => {
       vi.advanceTimersByTime(60000);
       const retry3 = await result.retry();
       expect(retry3).toBe(false); // Should fail after max retries
+    });
+
+    it('should return early from retry if already allowed', async () => {
+      mockRedis.get.mockResolvedValue('5'); // Under limit
+
+      const result = await checkRateLimit(baseConfig);
+      expect(result.allowed).toBe(true);
+
+      const retryResult = await result.retry();
+      expect(retryResult).toBe(true);
     });
   });
 
