@@ -62,14 +62,14 @@ function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
 function getUserLocation(request: Request): UserLocation {
   // Mock location data for development
   if (env.NODE_ENV === "development") {
-    const mockRequest = new Request(request);
-    mockRequest.headers.set("x-vercel-ip-country", "US");
-    mockRequest.headers.set("x-vercel-ip-country-region", "CA");
-    mockRequest.headers.set("x-vercel-ip-city", "San Francisco");
-    mockRequest.headers.set("x-vercel-ip-latitude", "37.7749");
-    mockRequest.headers.set("x-vercel-ip-longitude", "-122.4194");
+    // Set headers directly on the original request instead of creating a new one
+    request.headers.set("x-vercel-ip-country", "US");
+    request.headers.set("x-vercel-ip-country-region", "CA");
+    request.headers.set("x-vercel-ip-city", "San Francisco");
+    request.headers.set("x-vercel-ip-latitude", "37.7749");
+    request.headers.set("x-vercel-ip-longitude", "-122.4194");
     
-    const { longitude, latitude, city, country } = geolocation(mockRequest);
+    const { longitude, latitude, city, country } = geolocation(request);
     return { longitude, latitude, city, country };
   }
 
