@@ -35,6 +35,11 @@ export class SystemContext {
    */
   private readonly userLocation?: UserLocation;
 
+  /**
+   * The most recent feedback from the evaluator
+   */
+  private latestFeedback?: string;
+
   constructor(conversationMessages: Message[], userLocation?: UserLocation) {
     this.conversationMessages = conversationMessages;
     this.userLocation = userLocation;
@@ -141,5 +146,13 @@ export class SystemContext {
 ${locationParts.join("\n")}
 
 `;
+  }
+
+  setLastFeedback(feedback: string | undefined) {
+    this.latestFeedback = feedback;
+  }
+
+  getLastFeedback(): string | undefined {
+    return this.latestFeedback;
   }
 }

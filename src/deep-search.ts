@@ -25,16 +25,22 @@ export const actionSchema = z.object({
     .string()
     .describe("The reason you chose this step."),
   type: z
-    .enum(["search", "answer"])
+    .enum(["continue", "answer"])
     .describe(
       `The type of action to take.
-      - 'search': Search the web for information and automatically scrape the most relevant URLs found.
+      - 'continue': Continue searching for more information as the current data is insufficient.
       - 'answer': Answer the user's question and complete the loop.`,
     ),
   query: z
     .string()
     .describe(
-      "The query to search for. Required if type is 'search'.",
+      "The query to search for. Required if type is 'continue'.",
+    )
+    .optional(),
+  feedback: z
+    .string()
+    .describe(
+      "Required only when type is 'continue'. Detailed feedback about what information is missing or what needs to be improved in the search. This will be used to guide the next search iteration.",
     )
     .optional(),
 });
@@ -65,7 +71,14 @@ export const getNextAction = async (
     },
     prompt: `Current date: ${currentDate}
 
-${context.getUserLocationContext()}You are a helpful AI assistant that needs to choose the next action to take in a deep search conversation.
+${context.getUserLocationContext()}You are a research query optimizer. Your task is to analyze search results against the original research goal and either decide to answer the question or to search for more information.
+
+PROCESS:
+1. Identify ALL information explicitly requested in the original research goal
+2. Analyze what specific information has been successfully retrieved in the search results
+3. Identify ALL information gaps between what was requested and what was found
+4. For entity-specific gaps: Create targeted queries for each missing attribute of identified entities
+5. For general knowledge gaps: Create focused queries to find the missing conceptual information
 
 DATE AWARENESS:
 - Today's date is ${currentDate}
@@ -73,23 +86,25 @@ DATE AWARENESS:
 - Pay attention to publication dates in search results to ensure information freshness
 
 AVAILABLE ACTIONS:
-1. search - Search the web for information and automatically scrape relevant URLs
-   - Use this when you need to find and extract detailed information from web pages
+1. continue - Continue searching for more information
+   - Use this when you need to find and extract more detailed information from web pages
    - The system will automatically search for relevant pages AND scrape their content
    - Include specific search terms that would help find the most relevant results
-   - Consider using date-specific terms when looking for recent information
    - The system will fetch up to ${env.MAX_PAGES_TO_SCRAPE} most relevant pages and extract their full content
+   - IMPORTANT: When choosing continue, provide detailed feedback about what information is missing and how to search for it
 
 2. answer - Answer the user's question and complete the loop
    - Use this when you have gathered sufficient information to provide a comprehensive answer
    - Only choose this when you have enough context from previous searches
 
-ACTION SELECTION STRATEGY:
-- ALWAYS start with 'search' unless you already have sufficient information to answer
-- The search action will automatically find AND scrape the most relevant content, eliminating the need for separate scraping decisions
-- Only use 'answer' when you have comprehensive information to fully address the user's question
-- For ANY question requiring factual, current, or specific information, you MUST search first
-- Only skip searching for clearly conversational messages like greetings or thanks
+EVALUATION CRITERIA:
+- Completeness: Do we have ALL the information requested by the user?
+- Accuracy: Is the information from reliable sources and up-to-date?
+- Specificity: Do we have specific details, not just general information?
+- Coverage: Have we explored different aspects of the question?
+
+PREVIOUS FEEDBACK:
+${context.getLastFeedback() || "No previous feedback available."}
 
 CONVERSATION HISTORY:
 ${context.getConversationHistory()}
@@ -98,12 +113,16 @@ MOST RECENT USER MESSAGE: "${context.getLatestUserMessage()}"
 
 FIRST USER QUESTION: "${context.getInitialQuestion()}"
 
-CONTEXT HISTORY:
+SEARCH HISTORY AND SUMMARIES:
 ${context.getSearchHistory()}
 
-Based on the conversation history and the user's most recent message, determine the next action to take. 
+Based on your evaluation, determine the next action. When providing feedback (only required when type is 'continue'), include specific details about:
+- What information is still missing
+- Why the current information is insufficient
+- Specific search strategies or keywords to try
+- Any patterns or issues noticed in previous searches
 
-IMPORTANT: Pay close attention to the conversation history above. If the user is asking a follow-up question that references previous parts of the conversation (like "that's not working" or "can you explain more about X"), make sure to understand what they're referring to based on the conversation context. Use this context to inform your search queries and action selection.`,
+This feedback will be used to improve subsequent search queries.`,
   });
 
   return result.object as Action;

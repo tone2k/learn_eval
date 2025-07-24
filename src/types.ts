@@ -45,20 +45,22 @@ export interface WebSearchResponse {
   totalResults: number;
 }
 
-export interface SearchAction {
-  type: "search";
+export interface ContinueAction {
+  type: "continue";
   title: string;
   reasoning: string;
   query: string;
+  feedback?: string;
 }
 
 export interface AnswerAction {
   type: "answer";
   title: string;
   reasoning: string;
+  feedback?: string;
 }
 
-export type Action = SearchAction | AnswerAction;
+export type Action = ContinueAction | AnswerAction;
 
 // URL Summarization types
 export interface SummarizeURLInput {

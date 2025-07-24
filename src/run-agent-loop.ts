@@ -2,6 +2,7 @@ import type { Message, StreamTextResult } from "ai";
 import { answerQuestion } from "~/answer-question";
 import { getNextAction } from "~/deep-search";
 import { env } from "~/env";
+import { rewriteQuery } from "~/query-rewriter";
 import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
@@ -145,6 +146,11 @@ export async function runAgentLoop(
     const nextAction: Action = await getNextAction(ctx, langfuseTraceId);
     console.log("🎯 Next action:", nextAction);
     
+    // Store the feedback in the context
+    if (nextAction.feedback) {
+      ctx.setLastFeedback(nextAction.feedback);
+    }
+    
     // Send progress annotation to the UI
     if (writeMessageAnnotation) {
       writeMessageAnnotation({
@@ -154,12 +160,18 @@ export async function runAgentLoop(
     }
     
     // We execute the action and update the state of our system
-    if (nextAction.type === "search") {
+    if (nextAction.type === "continue") {
       if (!nextAction.query) {
-        console.error("❌ Search action missing query");
+        console.error("❌ Continue action missing query");
         break;
       }
-      await searchAndScrape(ctx, nextAction.query, langfuseTraceId);
+      
+      // Use the query rewriter to optimize the search query based on feedback
+      const optimizedQuery = await rewriteQuery(nextAction.query, ctx, langfuseTraceId);
+      console.log("🔄 Original query:", nextAction.query);
+      console.log("✨ Optimized query:", optimizedQuery);
+      
+      await searchAndScrape(ctx, optimizedQuery, langfuseTraceId);
     } else if (nextAction.type === "answer") {
       console.log("🎯 Ready to answer the question");
       return answerQuestion(ctx, { 
