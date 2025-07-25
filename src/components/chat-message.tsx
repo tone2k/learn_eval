@@ -50,9 +50,9 @@ export const ChatMessage = ({
 }: ChatMessageProps) => {
   const isAI = role === "assistant";
 
-  // Filter annotations for NEW_ACTION type
+  // Filter annotations to show both NEW_ACTION and SOURCES types
   const filteredAnnotations = annotations.filter(
-    (annotation) => annotation.type === "NEW_ACTION"
+    (annotation) => annotation.type === "NEW_ACTION" || annotation.type === "SOURCES"
   );
 
   return (
@@ -65,7 +65,7 @@ export const ChatMessage = ({
           {isAI ? "AI" : userName}
         </p>
 
-        {/* Show reasoning steps only for AI messages with annotations */}
+        {/* Show reasoning steps for AI messages with annotations */}
         {isAI && filteredAnnotations.length > 0 && (
           <ReasoningSteps annotations={filteredAnnotations} />
         )}

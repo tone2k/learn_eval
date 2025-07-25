@@ -3,7 +3,7 @@
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { OurMessageAnnotation } from "~/types";
+import type { OurMessageAnnotation, SearchSource } from "~/types";
 
 const components: Components = {
   p: ({ children }) => <p className="mb-2 first:mt-0 last:mb-0">{children}</p>,
@@ -34,6 +34,41 @@ const components: Components = {
 
 const Markdown = ({ children }: { children: string }) => {
   return <ReactMarkdown components={components}>{children}</ReactMarkdown>;
+};
+
+const Sources = ({ sources }: { sources: SearchSource[] }) => {
+  return (
+    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+      {sources.map((source, index) => (
+        <a
+          key={index}
+          href={source.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-start gap-2 rounded border border-gray-700 bg-gray-800 p-3 hover:bg-gray-700 transition-colors"
+        >
+          {source.favicon && (
+            <img
+              src={source.favicon}
+              alt=""
+              className="mt-0.5 size-4 flex-shrink-0"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-200 line-clamp-2">
+              {source.title}
+            </div>
+            <div className="mt-1 text-xs text-gray-400 line-clamp-2">
+              {source.snippet}
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+  );
 };
 
 export const ReasoningSteps = ({
@@ -69,27 +104,33 @@ export const ReasoningSteps = ({
                 >
                   {index + 1}
                 </span>
-                {annotation.action.title}
+{annotation.type === "NEW_ACTION" ? annotation.action.title : "Sources"}
               </button>
               <div className={`${isOpen ? "mt-1" : "hidden"}`}>
                 {isOpen && (
                   <div className="px-2 py-1">
-                    <div className="text-sm italic text-gray-400">
-                      <Markdown>{annotation.action.reasoning}</Markdown>
-                    </div>
-                    {annotation.action.type === "continue" && (
-                      <div className="mt-2 flex flex-col gap-2 text-sm text-gray-400">
-                        <div className="flex items-center gap-2">
-                          <SearchIcon className="size-4" />
-                          <span>Continuing search...</span>
+                    {annotation.type === "NEW_ACTION" ? (
+                      <>
+                        <div className="text-sm italic text-gray-400">
+                          <Markdown>{annotation.action.reasoning}</Markdown>
                         </div>
-                        {annotation.action.feedback && (
-                          <div className="mt-2 border-l-2 border-gray-700 pl-4">
-                            <div className="font-medium text-gray-300">Feedback:</div>
-                            <Markdown>{annotation.action.feedback}</Markdown>
+                        {annotation.action.type === "continue" && (
+                          <div className="mt-2 flex flex-col gap-2 text-sm text-gray-400">
+                            <div className="flex items-center gap-2">
+                              <SearchIcon className="size-4" />
+                              <span>Continuing search...</span>
+                            </div>
+                            {annotation.action.feedback && (
+                              <div className="mt-2 border-l-2 border-gray-700 pl-4">
+                                <div className="font-medium text-gray-300">Feedback:</div>
+                                <Markdown>{annotation.action.feedback}</Markdown>
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
+                      </>
+                    ) : (
+                      <Sources sources={annotation.sources} />
                     )}
                   </div>
                 )}

@@ -2,13 +2,14 @@ import type { Message, StreamTextResult } from "ai";
 import { answerQuestion } from "~/answer-question";
 import { getNextAction } from "~/deep-search";
 import { env } from "~/env";
+import { addFaviconsToSources } from "~/favicon-utils";
 import { rewriteQuery } from "~/query-rewriter";
 import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
 import { summarizeURLs } from "~/summarize-url";
 import { SystemContext } from "~/system-context";
-import type { Action, OurMessageAnnotation, SummarizeURLInput, UserLocation } from "~/types";
+import type { Action, OurMessageAnnotation, SearchSource, SummarizeURLInput, UserLocation } from "~/types";
 
 // Create cached version of bulkCrawlWebsites
 const cachedBulkCrawlWebsites = cacheWithRedis(
@@ -22,7 +23,8 @@ const cachedBulkCrawlWebsites = cacheWithRedis(
 export async function searchAndScrape(
   context: SystemContext, 
   query: string,
-  langfuseTraceId?: string
+  langfuseTraceId?: string,
+  writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void
 ): Promise<void> {
   console.log("🔍 Searching and scraping for:", query);
   
@@ -79,6 +81,24 @@ export async function searchAndScrape(
       }));
     
     console.log("📝 Starting URL summarization for", summarizationInputs.length, "URLs");
+    
+    // Display sources to the user before starting summarization
+    if (writeMessageAnnotation) {
+      const sources: SearchSource[] = searchResults.organic
+        .slice(0, env.MAX_PAGES_TO_SCRAPE)
+        .map(result => ({
+          title: result.title,
+          url: result.link,
+          snippet: result.snippet,
+        }));
+      
+      const sourcesWithFavicons = addFaviconsToSources(sources);
+      
+      writeMessageAnnotation({
+        type: "SOURCES",
+        sources: sourcesWithFavicons,
+      });
+    }
     
     // Summarize all URLs in parallel
     const summaryResults = await summarizeURLs(summarizationInputs, langfuseTraceId);
@@ -171,7 +191,7 @@ export async function runAgentLoop(
       console.log("🔄 Original query:", nextAction.query);
       console.log("✨ Optimized query:", optimizedQuery);
       
-      await searchAndScrape(ctx, optimizedQuery, langfuseTraceId);
+      await searchAndScrape(ctx, optimizedQuery, langfuseTraceId, writeMessageAnnotation);
     } else if (nextAction.type === "answer") {
       console.log("🎯 Ready to answer the question");
       return answerQuestion(ctx, { 

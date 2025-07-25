@@ -80,8 +80,21 @@ export interface SummarizeURLResult {
   url: string;
 }
 
-// Message annotation type for progress indicators
-export type OurMessageAnnotation = {
-  type: "NEW_ACTION";
-  action: Action;
-}; 
+// Source display types
+export interface SearchSource {
+  title: string;
+  url: string;
+  snippet: string;
+  favicon?: string;
+}
+
+// Message annotation types for progress indicators
+export type OurMessageAnnotation = 
+  | {
+      type: "NEW_ACTION";
+      action: Action;
+    }
+  | {
+      type: "SOURCES";
+      sources: SearchSource[];
+    }; 
