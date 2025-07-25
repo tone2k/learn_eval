@@ -15,4 +15,7 @@ export const defaultModel = geminiPro;
 export const factualityModel = google("gemini-1.5-flash-latest");
 
 // Model for URL summarization - fast with large context window
-export const summarizerModel = google("gemini-2.0-flash-lite"); 
+export const summarizerModel = google("gemini-2.0-flash-lite");
+
+// Model for content safety guardrails - fast and reliable
+export const guardrailModel = google("gemini-2.0-flash-001"); 

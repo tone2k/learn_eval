@@ -1,8 +1,10 @@
-import type { Message, StreamTextResult } from "ai";
+import { streamText, type Message, StreamTextResult } from "ai";
 import { answerQuestion } from "~/answer-question";
 import { getNextAction } from "~/deep-search";
 import { env } from "~/env";
 import { addFaviconsToSources } from "~/favicon-utils";
+import { checkIsSafe } from "~/guardrails";
+import { defaultModel } from "~/models";
 import { rewriteQuery } from "~/query-rewriter";
 import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
@@ -153,6 +155,33 @@ export async function runAgentLoop(
   const { langfuseTraceId, writeMessageAnnotation, onFinish, userLocation } = opts;
   // A persistent container for the state of our system
   const ctx = new SystemContext(conversationMessages, userLocation);
+  
+  // Guardrail check before entering the main loop
+  console.log("🛡️ Running safety check...");
+  const guardrailResult = await checkIsSafe(ctx, langfuseTraceId);
+  
+  if (guardrailResult.classification === "refuse") {
+    console.log("🚨 Query refused:", guardrailResult.reason);
+    
+    // Return a refusal message as a streamText result
+    return streamText({
+      model: defaultModel,
+      system: "You are a content safety guardrail. Refuse to answer unsafe questions.",
+      prompt: guardrailResult.reason || "Sorry, I can't help with that request.",
+      experimental_telemetry: langfuseTraceId ? {
+        isEnabled: true,
+        functionId: "guardrail-refusal",
+        metadata: {
+          langfuseTraceId: langfuseTraceId,
+        },
+      } : {
+        isEnabled: false,
+      },
+      onFinish: onFinish,
+    });
+  }
+  
+  console.log("✅ Safety check passed");
   
   // Get the latest user message for logging purposes
   const latestUserMessage = ctx.getLatestUserMessage();
