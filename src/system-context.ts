@@ -155,4 +155,15 @@ ${locationParts.join("\n")}
   getLastFeedback(): string | undefined {
     return this.latestFeedback;
   }
+
+  getMessageHistory(): string {
+    // Format the conversation history with XML tags for clarification check
+    return this.conversationMessages
+      .map((message) => {
+        const role = message.role === "user" ? "User" : "Assistant";
+        const content = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
+        return `<${role}>${content}</${role}>`;
+      })
+      .join("\n");
+  }
 }

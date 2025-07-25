@@ -4,6 +4,7 @@ import { getNextAction } from "~/deep-search";
 import { env } from "~/env";
 import { addFaviconsToSources } from "~/favicon-utils";
 import { checkIsSafe } from "~/guardrails";
+import { checkIfQuestionNeedsClarification } from "~/clarification";
 import { defaultModel } from "~/models";
 import { rewriteQuery } from "~/query-rewriter";
 import { searchSerper } from "~/serper";
@@ -182,6 +183,41 @@ export async function runAgentLoop(
   }
   
   console.log("✅ Safety check passed");
+  
+  // Clarification check before entering the main loop
+  console.log("❓ Checking if question needs clarification...");
+  const clarificationResult = await checkIfQuestionNeedsClarification(ctx, langfuseTraceId);
+  
+  if (clarificationResult.needsClarification) {
+    console.log("🔍 Question needs clarification:", clarificationResult.reason);
+    
+    // Return a clarification request as a streamText result
+    return streamText({
+      model: defaultModel,
+      system: `You are a clarification agent. Your job is to ask the user for clarification on their question.`,
+      prompt: `Here is the message history:
+
+${ctx.getMessageHistory()}
+
+And here is why the question needs clarification:
+
+${clarificationResult.reason}
+
+Please reply to the user with a clarification request.`,
+      experimental_telemetry: langfuseTraceId ? {
+        isEnabled: true,
+        functionId: "clarification-response",
+        metadata: {
+          langfuseTraceId: langfuseTraceId,
+        },
+      } : {
+        isEnabled: false,
+      },
+      onFinish: onFinish,
+    });
+  }
+  
+  console.log("✅ Question is clear, proceeding with search");
   
   // Get the latest user message for logging purposes
   const latestUserMessage = ctx.getLatestUserMessage();
