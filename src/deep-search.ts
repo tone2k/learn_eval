@@ -1,8 +1,9 @@
 import {
   generateObject,
-  type Message,
+  type UIMessage,
   type StreamTextResult,
   type TelemetrySettings,
+  type UIMessageStreamWriter,
 } from "ai";
 import { z } from "zod";
 import { env } from "~/env";
@@ -12,7 +13,7 @@ import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
 import { SystemContext } from "~/system-context";
-import type { Action, OurMessageAnnotation, UserLocation } from "~/types";
+import type { Action, OurMessage, UserLocation } from "~/types";
 
 // Action schema for structured outputs - avoiding z.union for better LLM compatibility
 export const actionSchema = z.object({
@@ -126,7 +127,11 @@ This feedback will be used to improve subsequent search queries.`,
   });
 
   // Report usage to context
-  context.reportUsage("get-next-action", result.usage);
+  context.reportUsage("get-next-action", {
+    promptTokens: result.usage.inputTokens || 0,
+    completionTokens: result.usage.outputTokens || 0,
+    totalTokens: result.usage.totalTokens || 0,
+  });
 
   return result.object as Action;
 };
@@ -220,10 +225,9 @@ const tools = {
 } as const;
 
 export async function streamFromDeepSearch(opts: {
-  messages: Message[];
-  onFinish: any;
+  messages: UIMessage[];
   telemetry: TelemetrySettings;
-  writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
+  writeMessagePart?: UIMessageStreamWriter<OurMessage>['write'];
   userLocation?: UserLocation;
 }): Promise<{
   result: StreamTextResult<{}, string>;
@@ -238,8 +242,7 @@ export async function streamFromDeepSearch(opts: {
   // Run the agent loop with the full conversation history
   const result = await runAgentLoop(opts.messages, {
     langfuseTraceId,
-    writeMessageAnnotation: opts.writeMessageAnnotation,
-    onFinish: opts.onFinish,
+    writeMessagePart: opts.writeMessagePart,
     userLocation: opts.userLocation,
     systemContext: ctx,
   });
@@ -250,10 +253,9 @@ export async function streamFromDeepSearch(opts: {
   };
 };
 
-export async function askDeepSearch(messages: Message[], userLocation?: UserLocation) {
+export async function askDeepSearch(messages: UIMessage[], userLocation?: UserLocation) {
   const { result } = await streamFromDeepSearch({
     messages,
-    onFinish: () => {}, // just a stub
     telemetry: {
       isEnabled: false,
     },

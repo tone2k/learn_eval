@@ -1,4 +1,4 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 import { generateObject } from "ai";
 import { createScorer, evalite } from "evalite";
 import { z } from "zod";
@@ -75,7 +75,7 @@ export const checkFactuality = async (opts: {
 
 // This is the scorer that can be passed into the scorers in Evalite
 export const Factuality = createScorer<
-  Message[],
+  UIMessage[],
   string,
   string
 >({
@@ -84,7 +84,10 @@ export const Factuality = createScorer<
     // Extract the question from the last user message
     const question = input
       .filter(msg => msg.role === "user")
-      .pop()?.content || "";
+      .pop()?.parts
+      ?.filter(part => part.type === "text")
+      .map(part => (part as any).text)
+      .join(" ") || "";
       
     return checkFactuality({
       question,
@@ -96,7 +99,7 @@ export const Factuality = createScorer<
 
 evalite("Deep Search Eval", {
   data: async (): Promise<
-    { input: Message[]; expected: string }[]
+    { input: any[]; expected: string }[]
   > => {
     const data = [...devData];
 

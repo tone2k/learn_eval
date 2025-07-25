@@ -1,5 +1,6 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 import type { UserLocation, UsageEntry } from "~/types";
+import { messageToString } from "~/utils";
 
 type SearchResult = {
   date: string;
@@ -23,7 +24,7 @@ export class SystemContext {
   /**
    * The full conversation history
    */
-  private readonly conversationMessages: Message[];
+  private readonly conversationUIMessages: UIMessage[];
 
   /**
    * The history of all searches performed, including URL summaries
@@ -45,8 +46,8 @@ export class SystemContext {
    */
   private usageEntries: UsageEntry[] = [];
 
-  constructor(conversationMessages: Message[], userLocation?: UserLocation) {
-    this.conversationMessages = conversationMessages;
+  constructor(conversationUIMessages: UIMessage[], userLocation?: UserLocation) {
+    this.conversationUIMessages = conversationUIMessages;
     this.userLocation = userLocation;
   }
 
@@ -97,30 +98,30 @@ export class SystemContext {
 
   getInitialQuestion(): string {
     // Get the first user message from the conversation
-    const firstUserMessage = this.conversationMessages.find(m => m.role === "user");
-    return firstUserMessage?.content?.toString() ?? "";
+    const firstUserMessage = this.conversationUIMessages.find((m: UIMessage) => m.role === "user");
+    return firstUserMessage ? messageToString(firstUserMessage) : "";
   }
 
   getLatestUserMessage(): string {
     // Get the most recent user message
-    const userMessages = this.conversationMessages.filter(m => m.role === "user");
+    const userMessages = this.conversationUIMessages.filter((m: UIMessage) => m.role === "user");
     const latestMessage = userMessages[userMessages.length - 1];
-    return latestMessage?.content?.toString() ?? "";
+    return latestMessage ? messageToString(latestMessage) : "";
   }
 
   getConversationHistory(): string {
     // Format the conversation history for use in prompts
-    return this.conversationMessages
-      .map((message) => {
+    return this.conversationUIMessages
+      .map((message: UIMessage) => {
         const role = message.role === "user" ? "Human" : "Assistant";
-        const content = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
+        const content = messageToString(message);
         return `${role}: ${content}`;
       })
       .join("\n\n");
   }
 
-  getFullConversationMessages(): Message[] {
-    return this.conversationMessages;
+  getFullConversationMessages(): UIMessage[] {
+    return this.conversationUIMessages;
   }
 
   getUserLocationContext(): string {
@@ -163,10 +164,10 @@ ${locationParts.join("\n")}
 
   getMessageHistory(): string {
     // Format the conversation history with XML tags for clarification check
-    return this.conversationMessages
-      .map((message) => {
+    return this.conversationUIMessages
+      .map((message: UIMessage) => {
         const role = message.role === "user" ? "User" : "Assistant";
-        const content = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
+        const content = messageToString(message);
         return `<${role}>${content}</${role}>`;
       })
       .join("\n");

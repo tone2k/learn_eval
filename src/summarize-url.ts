@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { summarizerModel } from "~/models";
 import { cacheWithRedis } from "~/server/redis/redis";
 import type { SummarizeURLInput, SummarizeURLResult } from "~/types";
+import { messageToString } from "~/utils";
 
 /**
  * Summarize URL content using a specialized LLM for summarization.
@@ -18,7 +19,7 @@ const uncachedSummarizeURL = async (
   const conversationContext = conversationHistory
     .map((message) => {
       const role = message.role === "user" ? "Human" : "Assistant";
-      const content = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
+      const content = messageToString(message);
       return `${role}: ${content}`;
     })
     .join("\n\n");
@@ -75,7 +76,11 @@ Create a detailed synthesis that captures the essential information from this so
 
     // Report usage if callback provided
     if (reportUsage) {
-      reportUsage(`summarize-url:${searchMetadata.url}`, result.usage);
+      reportUsage(`summarize-url:${searchMetadata.url}`, {
+        promptTokens: result.usage.inputTokens || 0,
+        completionTokens: result.usage.outputTokens || 0,
+        totalTokens: result.usage.totalTokens || 0,
+      });
     }
 
     return {

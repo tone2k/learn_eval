@@ -59,7 +59,11 @@ Return ONLY the optimized search query, nothing else.`,
   });
 
   // Report usage to context
-  context.reportUsage("rewrite-query", result.usage);
+  context.reportUsage("rewrite-query", {
+    promptTokens: result.usage.inputTokens || 0,
+    completionTokens: result.usage.outputTokens || 0,
+    totalTokens: result.usage.totalTokens || 0,
+  });
 
   return result.text.trim();
 }

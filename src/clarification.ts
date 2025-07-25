@@ -44,7 +44,11 @@ Respond with JSON: { "needsClarification": boolean, "reason": "string if true" }
   });
 
   // Report usage to context
-  ctx.reportUsage("clarification-check", result.usage);
+  ctx.reportUsage("clarification-check", {
+    promptTokens: result.usage.inputTokens || 0,
+    completionTokens: result.usage.outputTokens || 0,
+    totalTokens: result.usage.totalTokens || 0,
+  });
 
   return result.object;
 };

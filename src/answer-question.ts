@@ -6,7 +6,6 @@ import type { SystemContext } from "~/system-context";
 interface AnswerOptions {
   isFinal?: boolean;
   langfuseTraceId?: string;
-  onFinish: any;
 }
 
 /**
@@ -16,7 +15,7 @@ export function answerQuestion(
   context: SystemContext,
   opts: AnswerOptions
 ): StreamTextResult<{}, string> {
-  const { isFinal = false, langfuseTraceId, onFinish } = opts;
+  const { isFinal = false, langfuseTraceId } = opts;
   
   // Get current date for the system prompt
   const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -218,7 +217,6 @@ Remember: You're that friend who can explain anything clearly. Be warm, knowledg
     } : {
       isEnabled: false,
     },
-    onFinish,
   });
 
   // Report usage to context (usage is a promise for streaming calls)

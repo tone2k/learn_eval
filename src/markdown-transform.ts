@@ -101,12 +101,12 @@ export const markdownJoinerTransform =
       transform(chunk, controller) {
         if (chunk.type === "text-delta") {
           const processedText = joiner.processText(
-            chunk.textDelta,
+            chunk.text,
           );
           if (processedText) {
             controller.enqueue({
               ...chunk,
-              textDelta: processedText,
+              text: processedText,
             });
           }
         } else {
@@ -118,7 +118,8 @@ export const markdownJoinerTransform =
         if (remaining) {
           controller.enqueue({
             type: "text-delta",
-            textDelta: remaining,
+            id: crypto.randomUUID(),
+            text: remaining,
           } as TextStreamPart<TOOLS>);
         }
       },

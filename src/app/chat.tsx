@@ -1,14 +1,13 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import type { Message } from "ai";
 import { Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { StickToBottom } from "use-stick-to-bottom";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
-import type { OurMessageAnnotation } from "~/types";
+import type { OurMessage } from "~/types";
 import { isNewChatCreated } from "~/utils";
 
 interface ChatProps {
@@ -22,79 +21,84 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
   console.log('🔄 ChatPage render:', { chatId, isNewChat, userName });
   
   const router = useRouter();
-  const [initialMessages, setInitialMessages] = useState<Message[]>([]);
+  const [initialMessages, setInitialMessages] = useState<OurMessage[]>([]);
   const [isLoadingChat, setIsLoadingChat] = useState(!isNewChat);
   
-  // Generate a stable chat ID for new chats that persists across re-renders
-  const newChatIdRef = useRef<string | null>(null);
-  if (isNewChat && !newChatIdRef.current) {
-    newChatIdRef.current = crypto.randomUUID();
-    console.log('🆕 Generated new chat ID:', newChatIdRef.current);
-  }
-  
-  // Use the stable chat ID
-  const effectiveChatId = chatId || newChatIdRef.current;
+  // For new chats, let the backend generate the chat ID
+  // We'll track when a new chat gets created to update the URL
+  const [currentChatId, setCurrentChatId] = useState<string | null>(chatId);
+  console.log('🔍 Frontend state:', { currentChatId, chatId, isNewChat });
   
   // Track if we're in the process of creating a chat to prevent duplicates
   const [isCreatingChat, setIsCreatingChat] = useState(false);
 
   // Load existing messages and handle chat switching
   useEffect(() => {
+    console.log('🔎 EFFECT 1 - Message loading triggered:', { 
+      isNewChat, 
+      chatId, 
+      currentChatId,
+      timestamp: new Date().toISOString()
+    });
+    
     if (isNewChat) {
+      console.log('🔎 EFFECT 1 - New chat detected, clearing');
       setInitialMessages([]);
       setIsLoadingChat(false);
       return;
     }
 
     if (!chatId) {
+      console.log('🔎 EFFECT 1 - No chatId, clearing');
       setInitialMessages([]);
       setIsLoadingChat(false);
       return;
     }
 
+    console.log('🔎 EFFECT 1 - About to load messages for chatId:', chatId);
+    
     const loadExistingMessages = async () => {
       try {
+        console.log('🔎 EFFECT 1 - Starting API call for chatId:', chatId);
         setIsLoadingChat(true);
         const response = await fetch(`/api/chat?id=${chatId}`);
+        console.log('🔎 EFFECT 1 - API response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
-          console.log("🔍 Frontend: Received messages from API:", data.messages);
-          
-          if (data.messages) {
-            data.messages.forEach((msg: any, index: number) => {
-              console.log(`🔍 Frontend: Message ${index}:`, {
-                id: msg.id,
-                role: msg.role,
-                contentType: typeof msg.content,
-                content: msg.content,
-              });
-            });
-          }
+          console.log("🔎 EFFECT 1 - Success! Received", data.messages?.length || 0, 'messages');
           
           setInitialMessages(data.messages || []);
+          console.log('🔎 EFFECT 1 - Set initialMessages to', data.messages?.length || 0, 'messages');
         } else {
-          console.error("Failed to load chat messages");
+          console.error("🔎 EFFECT 1 - Failed to load, status:", response.status);
           setInitialMessages([]);
         }
       } catch (error) {
-        console.error("Error loading chat messages:", error);
+        console.error("🔎 EFFECT 1 - Error:", error);
         setInitialMessages([]);
       } finally {
         setIsLoadingChat(false);
+        console.log('🔎 EFFECT 1 - Finished loading');
       }
     };
 
     loadExistingMessages();
-  }, [chatId, isNewChat]);
+  }, [chatId, isNewChat, currentChatId]);
 
-  const { messages, input, handleInputChange, handleSubmit, status, stop, data, error, setMessages } = useChat({
-    api: "/api/chat",
-    id: effectiveChatId || undefined,
-    initialMessages,
-    body: {
-      chatId: effectiveChatId!, // Use the stable chat ID
-      isNewChat: isNewChat && !isCreatingChat, // Only treat as new if we haven't started creating
-    },
+  // Manual input state for v5
+  const [input, setInput] = useState("");
+
+  // Log useChat configuration
+  const useChatConfig = {
+    ...(currentChatId ? { id: currentChatId } : {}),
+    api: currentChatId ? `/api/chat?chatId=${currentChatId}` : '/api/chat',
+    messages: initialMessages,
+  };
+  console.log('🔧 useChat config:', useChatConfig);
+  
+  const { messages, sendMessage, status, stop, error, setMessages } = useChat<OurMessage>({
+    ...useChatConfig,
     onError: (error) => {
       console.error("🔥 useChat ERROR:", error);
       console.error("🔥 Error details:", {
@@ -104,33 +108,74 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
       });
     },
     onResponse: (response) => {
-      console.log("📡 useChat RESPONSE received:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+      console.log("📡 useChat received response:", response.status, response.statusText);
     },
-    onFinish: (message, { finishReason }) => {
-      // Navigate to new chat URL when chat is created
-      if (isNewChat && !isCreatingChat && data && data.length > 0) {
-        const lastDataItem = data[data.length - 1];
-        if (isNewChatCreated(lastDataItem)) {
+    onFinish: (message) => {
+      console.log("✅ useChat finished with message:", message);
+    },
+    onData: (data) => {
+      console.log('📡 Frontend received data:', data);
+      // Handle data parts in real-time
+      if (data.type === "data-newChatCreated") {
+        console.log('🚀 New chat created:', data.data.chatId);
+        if (isNewChat && !isCreatingChat) {
           setIsCreatingChat(true); // Mark that we're creating the chat
-          console.log('🚀 Navigating to new chat:', lastDataItem.chatId);
-          // Clear the ref so a new ID is generated for the next new chat
-          newChatIdRef.current = null;
+          setCurrentChatId(data.data.chatId);
+          console.log('🔄 Updated currentChatId to:', data.data.chatId);
           // Use router.push to navigate to the new chat
-          router.push(`?chatId=${lastDataItem.chatId}`);
+          router.push(`?chatId=${data.data.chatId}`);
         }
       }
-    }
+    },
   });
+  
+  // Sync initialMessages with useChat when they change (after useChat is defined)
+  useEffect(() => {
+    console.log('🔎 EFFECT 2 - Sync check:', {
+      initialMessagesLength: initialMessages.length,
+      useChatMessagesLength: messages.length,
+      hasSetMessages: !!setMessages,
+      timestamp: new Date().toISOString()
+    });
+    
+    if (initialMessages.length > 0) {
+      console.log('🔎 EFFECT 2 - Have initialMessages, checking sync...');
+      
+      if (setMessages && messages.length === 0) {
+        console.log('🔎 EFFECT 2 - useChat messages empty, syncing now!');
+        setMessages(initialMessages);
+      } else if (setMessages && messages.length !== initialMessages.length) {
+        console.log('🔎 EFFECT 2 - Length mismatch, syncing now!');
+        setMessages(initialMessages);
+      } else {
+        console.log('🔎 EFFECT 2 - No sync needed');
+      }
+    } else {
+      console.log('🔎 EFFECT 2 - No initialMessages to sync');
+    }
+  }, [initialMessages, messages, setMessages]);
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input.trim()) {
+      console.log('📤 Sending message with currentChatId:', currentChatId);
+      sendMessage({
+        text: input,
+      });
+      setInput("");
+    }
+  };
 
   const isLoading = status === "streaming";
 
   // Handle chat switching and error logging
   useEffect(() => {
+    console.log('🔄 Chat switching effect:', { chatId, currentChatId, isNewChat });
+    
+    // Update current chat ID when switching chats
+    setCurrentChatId(chatId);
+    
     // Clear messages when switching to new chat
     if (isNewChat && setMessages) {
       console.log('🧹 Clearing messages for new chat');
@@ -142,14 +187,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
     if (error) {
       console.error('🔥 useChat Error:', error.message);
     }
-  }, [isNewChat, setMessages, error]);
-  
-  // Reset the new chat ID ref when chatId changes (switching between chats)
-  useEffect(() => {
-    if (chatId) {
-      newChatIdRef.current = null;
-    }
-  }, [chatId]);
+  }, [chatId, isNewChat, setMessages, error]);
 
   // Simple form submit handler with loading protection
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -189,11 +227,10 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
             <>
               {messages.map((message, index) => (
                 <ChatMessage
-                  key={index}
+                  key={message.id || `message-${index}`}
                   parts={message.parts ?? []}
                   role={message.role}
                   userName={userName}
-                  annotations={((message as any).annotations ?? []) as OurMessageAnnotation[]}
                 />
               ))}
             </>
@@ -208,7 +245,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
             <div className="flex gap-2">
               <input
                 value={input}
-                onChange={handleInputChange}
+                onChange={(e) => setInput(e.target.value)}
                 placeholder="Say something..."
                 autoFocus
                 aria-label="Chat input"

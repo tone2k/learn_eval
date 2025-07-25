@@ -143,7 +143,11 @@ Remember: When in doubt, err on the side of caution. Your goal is protecting use
   });
 
   // Report usage to context
-  ctx.reportUsage("content-safety-check", result.usage);
+  ctx.reportUsage("content-safety-check", {
+    promptTokens: result.usage.inputTokens || 0,
+    completionTokens: result.usage.outputTokens || 0,
+    totalTokens: result.usage.totalTokens || 0,
+  });
 
   return result.object;
 };

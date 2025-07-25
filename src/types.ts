@@ -1,6 +1,17 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 
-export interface ChatMessage extends Message {
+// Define our custom data parts for type-safe streaming
+export type OurMessage = UIMessage<
+  never, // metadata - we don't use this
+  {
+    newAction: Action;
+    sources: SearchSource[];
+    usage: { totalTokens: number };
+    newChatCreated: { chatId: string };
+  }
+>;
+
+export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
@@ -64,7 +75,7 @@ export type Action = ContinueAction | AnswerAction;
 
 // URL Summarization types
 export interface SummarizeURLInput {
-  conversationHistory: Message[];
+  conversationHistory: UIMessage[];
   scrapedContent: string;
   searchMetadata: {
     title: string;
@@ -96,7 +107,7 @@ export interface UsageEntry {
   totalTokens: number;
 }
 
-// Message annotation types for progress indicators
+// Legacy annotation type - will be removed as we migrate to data parts
 export type OurMessageAnnotation = 
   | {
       type: "NEW_ACTION";

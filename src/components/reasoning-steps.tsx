@@ -3,7 +3,7 @@
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { OurMessageAnnotation, SearchSource } from "~/types";
+import type { OurMessage, SearchSource } from "~/types";
 
 const components: Components = {
   p: ({ children }) => <p className="mb-2 first:mt-0 last:mb-0">{children}</p>,
@@ -72,18 +72,18 @@ const Sources = ({ sources }: { sources: SearchSource[] }) => {
 };
 
 export const ReasoningSteps = ({
-  annotations,
+  parts,
 }: {
-  annotations: OurMessageAnnotation[];
+  parts: Array<Extract<OurMessage['parts'][number], { type: 'data-newAction' | 'data-sources' }>>;
 }) => {
   const [openStep, setOpenStep] = useState<number | null>(null);
 
-  if (annotations.length === 0) return null;
+  if (parts.length === 0) return null;
 
   return (
     <div className="mb-4 w-full">
       <ul className="space-y-1">
-        {annotations.map((annotation, index) => {
+        {parts.map((part, index) => {
           const isOpen = openStep === index;
           return (
             <li key={index} className="relative">
@@ -104,33 +104,33 @@ export const ReasoningSteps = ({
                 >
                   {index + 1}
                 </span>
-{annotation.type === "NEW_ACTION" ? annotation.action.title : "Sources"}
+{part.type === "data-newAction" ? part.data.title : "Sources"}
               </button>
               <div className={`${isOpen ? "mt-1" : "hidden"}`}>
                 {isOpen && (
                   <div className="px-2 py-1">
-                    {annotation.type === "NEW_ACTION" ? (
+                    {part.type === "data-newAction" ? (
                       <>
                         <div className="text-sm italic text-gray-400">
-                          <Markdown>{annotation.action.reasoning}</Markdown>
+                          <Markdown>{part.data.reasoning}</Markdown>
                         </div>
-                        {annotation.action.type === "continue" && (
+                        {part.data.type === "continue" && (
                           <div className="mt-2 flex flex-col gap-2 text-sm text-gray-400">
                             <div className="flex items-center gap-2">
                               <SearchIcon className="size-4" />
                               <span>Continuing search...</span>
                             </div>
-                            {annotation.action.feedback && (
+                            {part.data.feedback && (
                               <div className="mt-2 border-l-2 border-gray-700 pl-4">
                                 <div className="font-medium text-gray-300">Feedback:</div>
-                                <Markdown>{annotation.action.feedback}</Markdown>
+                                <Markdown>{part.data.feedback}</Markdown>
                               </div>
                             )}
                           </div>
                         )}
                       </>
-                    ) : annotation.type === "SOURCES" ? (
-                      <Sources sources={annotation.sources} />
+                    ) : part.type === "data-sources" ? (
+                      <Sources sources={part.data} />
                     ) : null}
                   </div>
                 )}

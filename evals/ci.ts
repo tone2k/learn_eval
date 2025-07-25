@@ -1,6 +1,6 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 
-export const ciData: { input: Message[]; expected: string }[] = [
+export const ciData: { input: any[]; expected: string }[] = [
   {
     input: [
       {

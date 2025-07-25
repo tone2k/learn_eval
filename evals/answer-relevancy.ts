@@ -1,4 +1,4 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 import { generateObject } from "ai";
 import { createScorer } from "evalite";
 import { z } from "zod";
@@ -256,7 +256,7 @@ export const checkAnswerRelevancy = async (opts: {
 
 // This is the scorer that can be passed into the scorers in Evalite
 export const AnswerRelevancy = createScorer<
-  Message[],
+  UIMessage[],
   string,
   string
 >({
@@ -265,7 +265,10 @@ export const AnswerRelevancy = createScorer<
     // Extract the question from the last user message
     const question = input
       .filter(msg => msg.role === "user")
-      .pop()?.content || "";
+      .pop()?.parts
+      ?.filter(part => part.type === "text")
+      .map(part => (part as any).text)
+      .join(" ") || "";
       
     return checkAnswerRelevancy({
       question,

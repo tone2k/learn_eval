@@ -1,3 +1,5 @@
+import type { UIMessage } from "ai";
+
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
 }
@@ -35,6 +37,14 @@ export function isNewChatCreated(
     "type" in data &&
     data.type === "NEW_CHAT_CREATED"
   );
+}
+
+// AI SDK v5 utility: Convert UIMessage to string by extracting text parts
+export function messageToString(message: UIMessage): string {
+  return message.parts
+    .filter((part): part is { type: "text"; text: string } => part.type === "text")
+    .map((part) => part.text)
+    .join(" ");
 }
 
  

@@ -1,6 +1,6 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 
-export const regressionData: { input: Message[]; expected: string }[] = [
+export const regressionData: { input: any[]; expected: string }[] = [
   {
     input: [
       {

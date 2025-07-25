@@ -1,12 +1,13 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 import { generateText } from "ai";
 import { and, desc, eq } from "drizzle-orm";
 import { defaultModel } from "~/models";
+import { messageToString } from "~/utils";
 import { db } from "./index";
 import { chats, messages } from "./schema";
 
 export const generateChatTitle = async (
-  messages: Message[],
+  messages: UIMessage[],
 ): Promise<string> => {
   const { text } = await generateText({
     model: defaultModel,
@@ -18,7 +19,7 @@ export const generateChatTitle = async (
       `,
     prompt: `Here is the chat history:
 
-      ${messages.map((m) => m.content).join("\n")}
+      ${messages.map((m) => messageToString(m)).join("\n")}
     `,
   });
 
@@ -29,7 +30,7 @@ export const upsertChat = async (opts: {
   userId: string;
   chatId: string;
   title?: string;
-  messages: Message[];
+  messages: UIMessage[];
 }) => {
   const { userId, chatId, title, messages: newMessages } = opts;
 
@@ -113,7 +114,7 @@ export const getChat = async (opts: { userId: string; chatId: string }) => {
     messages: chat.messages.map((message) => ({
       id: message.id,
       role: message.role,
-      content: message.parts,
+      parts: message.parts,
       annotations: message.annotations,
     })),
   };

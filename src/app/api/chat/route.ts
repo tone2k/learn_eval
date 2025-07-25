@@ -1,13 +1,14 @@
 import { geolocation } from "@vercel/functions";
-import type { Message } from "ai";
-import { appendResponseMessages, createDataStreamResponse } from "ai";
+import type { UIMessageStreamWriter } from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { Langfuse } from "langfuse";
 import { streamFromDeepSearch } from "~/deep-search";
 import { env } from "~/env";
 import { auth } from "~/server/auth";
 import { generateChatTitle, getChat, upsertChat } from "~/server/db/queries";
 import { checkRateLimit, recordRateLimit, type RateLimitConfig } from "~/server/rate-limit";
-import type { OurMessageAnnotation, UserLocation } from "~/types";
+import type { OurMessage, UserLocation } from "~/types";
+import { messageToString } from "~/utils";
 
 const langfuse = new Langfuse({
   environment: env.NODE_ENV,
@@ -22,7 +23,7 @@ const rateLimitConfig: RateLimitConfig = {
 };
 
 // Helper function to transform database message format to AI SDK format
-function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
+function transformDatabaseMessageToAISDK(msg: any, index: number): OurMessage {
   console.log(`🔍 Message ${index}:`, {
     id: msg.id,
     role: msg.role,
@@ -32,28 +33,23 @@ function transformDatabaseMessageToAISDK(msg: any, index: number): Message {
     createdAt: msg.createdAt,
   });
 
-  // Parse content if it's a JSON string, otherwise use as-is
-  let content = msg.content;
-  if (typeof msg.content === "string" && (msg.content.startsWith('[') || msg.content.startsWith('{'))) {
-    try {
-      content = JSON.parse(msg.content);
-    } catch (e) {
-      // If parsing fails, keep as string
-      content = msg.content;
-    }
+  // In AI SDK v5, messages use parts instead of content
+  // If we have stored parts, use them; otherwise convert content to text part
+  let parts = [];
+  
+  if (msg.parts) {
+    parts = msg.parts;
+  } else if (msg.content) {
+    // Convert legacy content to text part
+    const contentText = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+    parts = [{ type: 'text', text: contentText }];
   }
 
-  const transformedMessage: Message = {
+  const transformedMessage: OurMessage = {
     id: msg.id,
     role: msg.role,
-    content: content,
-    createdAt: msg.createdAt,
-  };
-
-  // Add parts if they exist
-  if (msg.parts) {
-    (transformedMessage as any).parts = msg.parts;
-  }
+    parts: parts,
+  } as OurMessage;
 
   console.log(`🔍 Transformed message ${index}:`, transformedMessage);
   return transformedMessage;
@@ -153,37 +149,61 @@ export async function POST(req: Request) {
     await recordRateLimit(rateLimitConfig);
     console.log("✅ Rate limit check passed, proceeding with request");
 
-    const { 
-      messages, 
-      chatId,
-      isNewChat
-    }: { 
-      messages: Message[]; 
-      chatId: string;
-      isNewChat: boolean;
-    } = await req.json();
+    const requestBody = await req.json();
+    console.log("📦 Full request body:", JSON.stringify(requestBody, null, 2));
+    const { messages }: { messages: OurMessage[] } = requestBody;
+    
+    // Extract chatId from the URL or useChat id
+    const url = new URL(req.url);
+    const chatIdFromParam = url.searchParams.get('chatId');
+    
+    console.log("🔍 URL:", req.url);
+    console.log("🔍 URL params:", Object.fromEntries(url.searchParams));
+    console.log("🔍 Request body keys:", Object.keys(requestBody));
+    console.log("🔍 Request body.id:", requestBody.id);
+    console.log("🔍 chatIdFromParam:", chatIdFromParam);
+    
+    // Get chatId from URL param first, then request body, then generate new one
+    const providedChatId = chatIdFromParam || requestBody.id;
+    let chatId = providedChatId || crypto.randomUUID();
+    
+    // Check if the chat actually exists in the database to determine if it's new
+    let isNewChat = true;
+    let existingChat = null;
+    
+    if (providedChatId) {
+      existingChat = await getChat({ chatId: providedChatId, userId: session.user.id });
+      isNewChat = !existingChat;
+      
+      if (!existingChat) {
+        // The provided ID doesn't exist, so generate a new one for this chat
+        chatId = crypto.randomUUID();
+        console.log("🔄 Provided chat ID doesn't exist, generating new one:", chatId);
+      }
+    }
     
     console.log("📝 Processing messages:", messages.length);
-    console.log("📝 Last message:", messages[messages.length - 1]?.content);
-    console.log("💬 Chat ID:", chatId);
+    const lastMessage = messages[messages.length - 1];
+    console.log("📝 Last message:", lastMessage ? messageToString(lastMessage) : "No messages");
+    console.log("💬 Final Chat ID:", chatId);
     console.log("🆕 Is new chat:", isNewChat);
-    console.log("🔍 Request body:", { chatId, isNewChat, messageCount: messages.length });
+    console.log("🔍 Decision logic: chatIdFromParam?", !!chatIdFromParam, "requestBody.id?", !!requestBody.id);
 
     const trace = langfuse.trace({
       name: "chat",
       userId: session.user.id,
     });
 
-    let conversationMessages: Message[] = messages;
+    let conversationMessages: OurMessage[] = messages;
 
     // Start generating title in parallel for new chats
     let titlePromise: Promise<string> | undefined;
     
-    // First, check if this chat already exists in the database
-    const checkExistingChat = await getChat({ chatId, userId: session.user.id });
+    // We already checked if the chat exists above
+    console.log("🔍 Existing chat found:", !!existingChat);
     
-    if (isNewChat && !checkExistingChat) {
-      // This is truly a new chat - start generating title in parallel
+    if (isNewChat) {
+      // This is a new chat - start generating title in parallel
       titlePromise = generateChatTitle(messages);
       
       console.log("🆕 Creating new chat:", chatId, "with generating title...");
@@ -212,13 +232,9 @@ export async function POST(req: Request) {
         },
       });
     } else {
-      // Not a new chat, resolve empty string
-      titlePromise = Promise.resolve("");
-    }
-    
-    if (!isNewChat || checkExistingChat) {
-      // This is an existing chat - verify ownership and load messages
-      // For existing chats, load the complete conversation history
+      // This is an existing chat (we already verified it exists above)
+      
+      // This is an existing chat - load messages
       console.log("📖 Loading existing chat:", chatId);
       
       const verifyChatOwnershipSpan = trace.span({
@@ -231,18 +247,13 @@ export async function POST(req: Request) {
       
       verifyChatOwnershipSpan.end({
         output: {
-          exists: !!checkExistingChat,
-          belongsToUser: !!checkExistingChat,
+          exists: true,
+          belongsToUser: true,
         },
       });
       
-      if (!checkExistingChat) {
-        console.log("❌ Chat not found or access denied");
-        return new Response("Chat not found", { status: 404 });
-      }
-      
       // Transform existing messages from database format to AI SDK format
-      const existingMessages = checkExistingChat.messages.map((msg, index) => 
+      const existingMessages = existingChat.messages.map((msg, index) => 
         transformDatabaseMessageToAISDK(msg, index)
       );
       
@@ -251,6 +262,9 @@ export async function POST(req: Request) {
       console.log("📝 Existing messages:", existingMessages.length);
       console.log("📝 New messages:", messages.length);
       console.log("📝 Total conversation messages:", conversationMessages.length);
+      
+      // No title generation needed for existing chats
+      titlePromise = Promise.resolve("");
     }
     
     // Update trace with sessionId after chat is created/loaded
@@ -260,22 +274,18 @@ export async function POST(req: Request) {
 
     console.log("🔧 Starting deep search stream");
     
-    // Collect annotations in memory during the stream
-    const annotations: OurMessageAnnotation[] = [];
-
-    return createDataStreamResponse({
-      async execute(dataStream) {
-        // Send new chat created event only if this is truly a new chat
-        // Check if chat exists first to prevent duplicate creation events
-        const chatExists = await getChat({ chatId, userId: session.user.id });
-        if (isNewChat && !chatExists) {
-          dataStream.writeData({
-            type: "NEW_CHAT_CREATED",
-            chatId: chatId,
+    // Create the UI message stream with type-safe data parts
+    const stream = createUIMessageStream<OurMessage>({
+      async execute({ writer }: { writer: UIMessageStreamWriter<OurMessage> }) {
+        // Send new chat created event if this is a new chat (transient data part)
+        if (isNewChat) {
+          await writer.write({
+            type: "data-newChatCreated",
+            data: { chatId },
           });
         }
 
-        const { result, getContext } = await streamFromDeepSearch({
+        const { result } = await streamFromDeepSearch({
           messages: conversationMessages,
           telemetry: {
             isEnabled: true,
@@ -284,52 +294,39 @@ export async function POST(req: Request) {
               langfuseTraceId: trace.id,
             },
           },
-          writeMessageAnnotation: (annotation: OurMessageAnnotation) => {
-            // Save the annotation in-memory
-            annotations.push(annotation);
-            // Send it to the client
-            dataStream.writeMessageAnnotation(annotation as any);
-          },
+          writeMessagePart: writer.write,
           userLocation,
-          onFinish: async ({ response }: any) => {
-            console.log("onFinish", response);
-            
-            try {
-              // Merge the existing messages with the response messages
-              const updatedMessages = appendResponseMessages({
-                messages: conversationMessages,
-                responseMessages: response.messages,
-              });
-
-              const lastMessage = updatedMessages[updatedMessages.length - 1];
-              if (!lastMessage) {
-                return;
-              }
-
-              // Add the annotations to the last message
-              (lastMessage as any).annotations = annotations;
-
-              // Await the title generation if it was started
-              const generatedTitle = titlePromise ? await titlePromise : "";
-
-              // Save the complete chat history with generated title (if available)
-              await upsertChat({
-                userId: session.user.id,
-                chatId,
-                messages: updatedMessages,
-                ...(generatedTitle ? { title: generatedTitle } : {}),
-              });
-
-              await langfuse.flushAsync();
-            } catch (error) {
-              console.error("❌ Error saving chat:", error);
-            }
-          },
         });
 
-        result.mergeIntoDataStream(dataStream);
+        // Merge the final streaming result into our stream
+        await writer.merge(result.toUIMessageStream());
+      },
+      onFinish: async ({ messages }: { messages: OurMessage[] }) => {
+        console.log("🏁 Stream finished, saving chat");
+        
+        try {
+          // Get the complete updated conversation
+          const updatedMessages = [...conversationMessages, ...messages];
+
+          // Await the title generation if it was started
+          const generatedTitle = titlePromise ? await titlePromise : "";
+
+          // Save the complete chat history with generated title (if available)
+          await upsertChat({
+            userId: session.user.id,
+            chatId,
+            messages: updatedMessages,
+            ...(generatedTitle ? { title: generatedTitle } : {}),
+          });
+
+          await langfuse.flushAsync();
+        } catch (error) {
+          console.error("❌ Error saving chat:", error);
+        }
       },
     });
+
+    return createUIMessageStreamResponse({ stream });
   } catch (error) {
     console.error("Chat API error:", error);
     return new Response("Internal Server Error", { status: 500 });

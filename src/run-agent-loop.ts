@@ -1,4 +1,5 @@
-import { streamText, type Message, type StreamTextResult } from "ai";
+import { streamText, type UIMessage, type StreamTextResult, type UIMessageStreamWriter } from "ai";
+import { randomUUID } from "crypto";
 import { answerQuestion } from "~/answer-question";
 import { getNextAction } from "~/deep-search";
 import { env } from "~/env";
@@ -12,7 +13,10 @@ import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
 import { summarizeURLs } from "~/summarize-url";
 import { SystemContext } from "~/system-context";
-import type { Action, OurMessageAnnotation, SearchSource, SummarizeURLInput, UserLocation } from "~/types";
+import type { Action, OurMessage, SearchSource, SummarizeURLInput, UserLocation } from "~/types";
+
+// Static ID for usage data part to prevent duplication
+const USAGE_DATA_PART_ID = randomUUID();
 
 // Create cached version of bulkCrawlWebsites
 const cachedBulkCrawlWebsites = cacheWithRedis(
@@ -27,7 +31,7 @@ export async function searchAndScrape(
   context: SystemContext, 
   query: string,
   langfuseTraceId?: string,
-  writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void
+  writeMessagePart?: UIMessageStreamWriter<OurMessage>['write']
 ): Promise<void> {
   console.log("🔍 Searching and scraping for:", query);
   
@@ -86,7 +90,7 @@ export async function searchAndScrape(
     console.log("📝 Starting URL summarization for", summarizationInputs.length, "URLs");
     
     // Display sources to the user before starting summarization
-    if (writeMessageAnnotation) {
+    if (writeMessagePart) {
       const sources: SearchSource[] = searchResults.organic
         .slice(0, env.MAX_PAGES_TO_SCRAPE)
         .map(result => ({
@@ -97,9 +101,9 @@ export async function searchAndScrape(
       
       const sourcesWithFavicons = addFaviconsToSources(sources);
       
-      writeMessageAnnotation({
-        type: "SOURCES",
-        sources: sourcesWithFavicons,
+      await writeMessagePart({
+        type: "data-sources",
+        data: sourcesWithFavicons,
       });
     }
     
@@ -149,16 +153,15 @@ export async function searchAndScrape(
  * Main agent loop implementation
  */
 export async function runAgentLoop(
-  conversationMessages: Message[],
+  conversationMessages: UIMessage[],
   opts: {
     langfuseTraceId?: string;
-    writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
-    onFinish: any;
+    writeMessagePart?: UIMessageStreamWriter<OurMessage>['write'];
     userLocation?: UserLocation;
     systemContext?: SystemContext;
   }
 ): Promise<StreamTextResult<{}, string>> {
-  const { langfuseTraceId, writeMessageAnnotation, onFinish, userLocation, systemContext } = opts;
+  const { langfuseTraceId, writeMessagePart, userLocation, systemContext } = opts;
   // A persistent container for the state of our system
   const ctx = systemContext || new SystemContext(conversationMessages, userLocation);
   
@@ -183,7 +186,6 @@ export async function runAgentLoop(
       } : {
         isEnabled: false,
       },
-      onFinish: onFinish,
     });
 
     // Report usage to context (usage is a promise for streaming calls)
@@ -225,7 +227,6 @@ Please reply to the user with a clarification request.`,
       } : {
         isEnabled: false,
       },
-      onFinish: onFinish,
     });
 
     // Report usage to context (usage is a promise for streaming calls)
@@ -256,21 +257,22 @@ Please reply to the user with a clarification request.`,
     }
     
     // Send progress annotation to the UI
-    if (writeMessageAnnotation) {
-      writeMessageAnnotation({
-        type: "NEW_ACTION",
-        action: nextAction,
+    if (writeMessagePart) {
+      await writeMessagePart({
+        type: "data-newAction",
+        data: nextAction,
       });
     }
 
     // Send token usage annotation after each action
-    if (writeMessageAnnotation) {
+    if (writeMessagePart) {
       const usageEntries = ctx.getUsageEntries();
       if (usageEntries.length > 0) {
         const totalTokens = usageEntries.reduce((sum, entry) => sum + entry.totalTokens, 0);
-        writeMessageAnnotation({
-          type: "USAGE",
-          totalTokens,
+        await writeMessagePart({
+          type: "data-usage",
+          data: { totalTokens },
+          id: USAGE_DATA_PART_ID,
         });
       }
     }
@@ -287,16 +289,17 @@ Please reply to the user with a clarification request.`,
       console.log("🔄 Original query:", nextAction.query);
       console.log("✨ Optimized query:", optimizedQuery);
       
-      await searchAndScrape(ctx, optimizedQuery, langfuseTraceId, writeMessageAnnotation);
+      await searchAndScrape(ctx, optimizedQuery, langfuseTraceId, writeMessagePart);
       
       // Send updated token usage annotation after search and scrape
-      if (writeMessageAnnotation) {
+      if (writeMessagePart) {
         const usageEntries = ctx.getUsageEntries();
         if (usageEntries.length > 0) {
           const totalTokens = usageEntries.reduce((sum, entry) => sum + entry.totalTokens, 0);
-          writeMessageAnnotation({
-            type: "USAGE",
-            totalTokens,
+          await writeMessagePart({
+            type: "data-usage",
+            data: { totalTokens },
+            id: USAGE_DATA_PART_ID,
           });
         }
       }
@@ -305,7 +308,6 @@ Please reply to the user with a clarification request.`,
       return answerQuestion(ctx, { 
         isFinal: false,
         langfuseTraceId,
-        onFinish,
       });
     }
     
@@ -319,6 +321,5 @@ Please reply to the user with a clarification request.`,
   return answerQuestion(ctx, { 
     isFinal: true, 
     langfuseTraceId,
-    onFinish,
   });
 } 

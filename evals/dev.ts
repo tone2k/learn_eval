@@ -1,6 +1,6 @@
-import type { Message } from "ai";
+import type { UIMessage } from "ai";
 
-export const devData: { input: Message[]; expected: string }[] = [
+export const devData: { input: any[]; expected: string }[] = [
   // Most challenging multi-hop reasoning cases for dev testing
   {
     input: [

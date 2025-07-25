@@ -1,13 +1,11 @@
-import type { Message } from "@ai-sdk/react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import type { OurMessageAnnotation } from "~/types";
+import type { OurMessage } from "~/types";
 import { ReasoningSteps } from "./reasoning-steps";
 
 interface ChatMessageProps {
-  parts: any[];
+  parts: OurMessage['parts'];
   role: string;
   userName: string;
-  annotations: OurMessageAnnotation[];
 }
 
 const components: Components = {
@@ -46,17 +44,23 @@ export const ChatMessage = ({
   parts,
   role,
   userName,
-  annotations,
 }: ChatMessageProps) => {
+  console.log(`🎨 ChatMessage received:`, { role, partsCount: parts?.length, parts: parts?.map(p => ({ type: p.type, hasText: !!p.text })) });
   const isAI = role === "assistant";
 
-  // Filter annotations to show both NEW_ACTION and SOURCES types
-  const filteredAnnotations = annotations.filter(
-    (annotation) => annotation.type === "NEW_ACTION" || annotation.type === "SOURCES"
+  // Extract data parts
+  const actionParts = parts.filter((part): part is Extract<typeof part, { type: 'data-newAction' }> => 
+    part.type === 'data-newAction'
+  );
+  
+  const sourcesParts = parts.filter((part): part is Extract<typeof part, { type: 'data-sources' }> => 
+    part.type === 'data-sources'
   );
 
-  // Find the latest USAGE annotation (if any)
-  const usageAnnotation = isAI ? annotations.findLast((annotation) => annotation.type === "USAGE") : undefined;
+  // Find the latest usage data part (if any)
+  const usagePart = isAI ? parts.findLast((part): part is Extract<typeof part, { type: 'data-usage' }> => 
+    part.type === 'data-usage'
+  ) : undefined;
 
   return (
     <div className="mb-6">
@@ -68,16 +72,18 @@ export const ChatMessage = ({
           {isAI ? "AI" : userName}
         </p>
 
-        {/* Show reasoning steps for AI messages with annotations */}
-        {isAI && filteredAnnotations.length > 0 && (
-          <ReasoningSteps annotations={filteredAnnotations} />
+        {/* Show reasoning steps for AI messages with data parts */}
+        {isAI && (actionParts.length > 0 || sourcesParts.length > 0) && (
+          <ReasoningSteps parts={[...actionParts, ...sourcesParts]} />
         )}
 
         <div className="prose prose-invert max-w-none">
           {parts && parts.length > 0 ? (
             // Render message parts for tool calls and other structured content
             parts.map((part: any, index: number) => {
+              console.log(`🎨 ChatMessage rendering part ${index}:`, { type: part.type, hasText: !!part.text });
               if (part.type === "text") {
+                console.log(`🎨 Rendering text part: "${part.text?.substring(0, 50)}..."`);
                 return <Markdown key={index}>{part.text}</Markdown>;
               } else if (part.type === "tool-invocation") {
                 return (
@@ -100,9 +106,9 @@ export const ChatMessage = ({
         </div>
 
         {/* Show token usage for AI messages */}
-        {isAI && usageAnnotation && (
+        {isAI && usagePart && (
           <div className="mb-2 text-xs text-gray-400">
-            Tokens used: {usageAnnotation.totalTokens.toLocaleString()}
+            Tokens used: {usagePart.data.totalTokens.toLocaleString()}
           </div>
         )}
       </div>
