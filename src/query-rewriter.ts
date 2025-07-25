@@ -58,5 +58,8 @@ Based on the evaluator's feedback about what information is missing and the sear
 Return ONLY the optimized search query, nothing else.`,
   });
 
+  // Report usage to context
+  context.reportUsage("rewrite-query", result.usage);
+
   return result.text.trim();
 }

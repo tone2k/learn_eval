@@ -55,6 +55,9 @@ export const ChatMessage = ({
     (annotation) => annotation.type === "NEW_ACTION" || annotation.type === "SOURCES"
   );
 
+  // Find the latest USAGE annotation (if any)
+  const usageAnnotation = isAI ? annotations.findLast((annotation) => annotation.type === "USAGE") : undefined;
+
   return (
     <div className="mb-6">
       <div
@@ -95,6 +98,13 @@ export const ChatMessage = ({
             <p className="text-gray-500">No content</p>
           )}
         </div>
+
+        {/* Show token usage for AI messages */}
+        {isAI && usageAnnotation && (
+          <div className="mb-2 text-xs text-gray-400">
+            Tokens used: {usageAnnotation.totalTokens.toLocaleString()}
+          </div>
+        )}
       </div>
     </div>
   );

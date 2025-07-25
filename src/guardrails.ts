@@ -9,7 +9,7 @@ export const checkIsSafe = async (
 ) => {
   const messageHistory = ctx.getConversationHistory();
 
-  const { object } = await generateObject({
+  const result = await generateObject({
     model: guardrailModel,
     schema: z.object({
       classification: z.enum(["allow", "refuse"]),
@@ -142,5 +142,8 @@ Remember: When in doubt, err on the side of caution. Your goal is protecting use
     prompt: messageHistory,
   });
 
-  return object;
+  // Report usage to context
+  ctx.reportUsage("content-safety-check", result.usage);
+
+  return result.object;
 };

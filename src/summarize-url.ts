@@ -10,6 +10,7 @@ import type { SummarizeURLInput, SummarizeURLResult } from "~/types";
 const uncachedSummarizeURL = async (
   input: SummarizeURLInput,
   langfuseTraceId?: string,
+  reportUsage?: (description: string, usage: { promptTokens: number; completionTokens: number; totalTokens: number }) => void,
 ): Promise<SummarizeURLResult> => {
   const { conversationHistory, scrapedContent, searchMetadata, query } = input;
 
@@ -72,6 +73,11 @@ Create a detailed synthesis that captures the essential information from this so
       },
     });
 
+    // Report usage if callback provided
+    if (reportUsage) {
+      reportUsage(`summarize-url:${searchMetadata.url}`, result.usage);
+    }
+
     return {
       summary: result.text,
       url: searchMetadata.url,
@@ -103,12 +109,13 @@ export const summarizeURL = cacheWithRedis(
 export async function summarizeURLs(
   inputs: SummarizeURLInput[],
   langfuseTraceId?: string,
+  reportUsage?: (description: string, usage: { promptTokens: number; completionTokens: number; totalTokens: number }) => void,
 ): Promise<SummarizeURLResult[]> {
   console.log("📝 Starting parallel summarization of", inputs.length, "URLs");
   
   try {
     const summaryPromises = inputs.map(input => 
-      summarizeURL(input, langfuseTraceId)
+      summarizeURL(input, langfuseTraceId, reportUsage)
     );
     
     const results = await Promise.all(summaryPromises);

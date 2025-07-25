@@ -199,7 +199,7 @@ RESPONSE REQUIREMENTS:
 
 Remember: You're that friend who can explain anything clearly. Be warm, knowledgeable, and genuinely helpful while following the formatting rules precisely.`;
 
-  return streamText({
+  const result = streamText({
     model: defaultModel,
     prompt: systemPrompt,
     experimental_transform: [
@@ -220,4 +220,11 @@ Remember: You're that friend who can explain anything clearly. Be warm, knowledg
     },
     onFinish,
   });
+
+  // Report usage to context (usage is a promise for streaming calls)
+  result.usage.then((usage: any) => {
+    context.reportUsage("answer-question", usage);
+  });
+
+  return result;
 } 

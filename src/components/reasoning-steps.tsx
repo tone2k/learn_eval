@@ -129,9 +129,9 @@ export const ReasoningSteps = ({
                           </div>
                         )}
                       </>
-                    ) : (
+                    ) : annotation.type === "SOURCES" ? (
                       <Sources sources={annotation.sources} />
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>

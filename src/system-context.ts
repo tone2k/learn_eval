@@ -1,5 +1,5 @@
 import type { Message } from "ai";
-import type { UserLocation } from "~/types";
+import type { UserLocation, UsageEntry } from "~/types";
 
 type SearchResult = {
   date: string;
@@ -39,6 +39,11 @@ export class SystemContext {
    * The most recent feedback from the evaluator
    */
   private latestFeedback?: string;
+
+  /**
+   * Token usage tracking for the current request
+   */
+  private usageEntries: UsageEntry[] = [];
 
   constructor(conversationMessages: Message[], userLocation?: UserLocation) {
     this.conversationMessages = conversationMessages;
@@ -165,5 +170,22 @@ ${locationParts.join("\n")}
         return `<${role}>${content}</${role}>`;
       })
       .join("\n");
+  }
+
+  reportUsage(description: string, usage: { promptTokens: number; completionTokens: number; totalTokens: number }) {
+    this.usageEntries.push({
+      description,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      totalTokens: usage.totalTokens,
+    });
+  }
+
+  getTotalTokensUsed(): number {
+    return this.usageEntries.reduce((total, entry) => total + entry.totalTokens, 0);
+  }
+
+  getUsageEntries(): UsageEntry[] {
+    return this.usageEntries;
   }
 }

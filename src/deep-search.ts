@@ -11,7 +11,7 @@ import { runAgentLoop } from "~/run-agent-loop";
 import { searchSerper } from "~/serper";
 import { cacheWithRedis } from "~/server/redis/redis";
 import { bulkCrawlWebsites } from "~/server/tools/crawler";
-import type { SystemContext } from "~/system-context";
+import { SystemContext } from "~/system-context";
 import type { Action, OurMessageAnnotation, UserLocation } from "~/types";
 
 // Action schema for structured outputs - avoiding z.union for better LLM compatibility
@@ -125,6 +125,9 @@ Based on your evaluation, determine the next action. When providing feedback (on
 This feedback will be used to improve subsequent search queries.`,
   });
 
+  // Report usage to context
+  context.reportUsage("get-next-action", result.usage);
+
   return result.object as Action;
 };
 
@@ -222,9 +225,15 @@ export async function streamFromDeepSearch(opts: {
   telemetry: TelemetrySettings;
   writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
   userLocation?: UserLocation;
-}): Promise<StreamTextResult<{}, string>> {
+}): Promise<{
+  result: StreamTextResult<{}, string>;
+  getContext: () => SystemContext;
+}> {
   // Extract langfuseTraceId from telemetry metadata if available
   const langfuseTraceId = opts.telemetry.isEnabled ? opts.telemetry.metadata?.langfuseTraceId as string | undefined : undefined;
+  
+  // Create context here so we can return it
+  const ctx = new SystemContext(opts.messages, opts.userLocation);
   
   // Run the agent loop with the full conversation history
   const result = await runAgentLoop(opts.messages, {
@@ -232,13 +241,17 @@ export async function streamFromDeepSearch(opts: {
     writeMessageAnnotation: opts.writeMessageAnnotation,
     onFinish: opts.onFinish,
     userLocation: opts.userLocation,
+    systemContext: ctx,
   });
   
-  return result;
+  return {
+    result,
+    getContext: () => ctx,
+  };
 };
 
 export async function askDeepSearch(messages: Message[], userLocation?: UserLocation) {
-  const result = await streamFromDeepSearch({
+  const { result } = await streamFromDeepSearch({
     messages,
     onFinish: () => {}, // just a stub
     telemetry: {

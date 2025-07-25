@@ -275,7 +275,7 @@ export async function POST(req: Request) {
           });
         }
 
-        const result = await streamFromDeepSearch({
+        const { result, getContext } = await streamFromDeepSearch({
           messages: conversationMessages,
           telemetry: {
             isEnabled: true,

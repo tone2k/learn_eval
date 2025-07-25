@@ -88,6 +88,14 @@ export interface SearchSource {
   favicon?: string;
 }
 
+// Token usage tracking types
+export interface UsageEntry {
+  description: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 // Message annotation types for progress indicators
 export type OurMessageAnnotation = 
   | {
@@ -97,4 +105,8 @@ export type OurMessageAnnotation =
   | {
       type: "SOURCES";
       sources: SearchSource[];
+    }
+  | {
+      type: "USAGE";
+      totalTokens: number;
     }; 

@@ -1,4 +1,4 @@
-import { streamText, type Message, StreamTextResult } from "ai";
+import { streamText, type Message, type StreamTextResult } from "ai";
 import { answerQuestion } from "~/answer-question";
 import { getNextAction } from "~/deep-search";
 import { env } from "~/env";
@@ -104,7 +104,11 @@ export async function searchAndScrape(
     }
     
     // Summarize all URLs in parallel
-    const summaryResults = await summarizeURLs(summarizationInputs, langfuseTraceId);
+    const summaryResults = await summarizeURLs(
+      summarizationInputs, 
+      langfuseTraceId, 
+      (description, usage) => context.reportUsage(description, usage)
+    );
     
     console.log("✅ URL summarization completed");
     
@@ -151,11 +155,12 @@ export async function runAgentLoop(
     writeMessageAnnotation?: (annotation: OurMessageAnnotation) => void;
     onFinish: any;
     userLocation?: UserLocation;
+    systemContext?: SystemContext;
   }
 ): Promise<StreamTextResult<{}, string>> {
-  const { langfuseTraceId, writeMessageAnnotation, onFinish, userLocation } = opts;
+  const { langfuseTraceId, writeMessageAnnotation, onFinish, userLocation, systemContext } = opts;
   // A persistent container for the state of our system
-  const ctx = new SystemContext(conversationMessages, userLocation);
+  const ctx = systemContext || new SystemContext(conversationMessages, userLocation);
   
   // Guardrail check before entering the main loop
   console.log("🛡️ Running safety check...");
@@ -165,7 +170,7 @@ export async function runAgentLoop(
     console.log("🚨 Query refused:", guardrailResult.reason);
     
     // Return a refusal message as a streamText result
-    return streamText({
+    const refusalResult = streamText({
       model: defaultModel,
       system: "You are a content safety guardrail. Refuse to answer unsafe questions.",
       prompt: guardrailResult.reason || "Sorry, I can't help with that request.",
@@ -180,6 +185,13 @@ export async function runAgentLoop(
       },
       onFinish: onFinish,
     });
+
+    // Report usage to context (usage is a promise for streaming calls)
+    refusalResult.usage.then((usage: any) => {
+      ctx.reportUsage("guardrail-refusal", usage);
+    });
+
+    return refusalResult;
   }
   
   console.log("✅ Safety check passed");
@@ -192,7 +204,7 @@ export async function runAgentLoop(
     console.log("🔍 Question needs clarification:", clarificationResult.reason);
     
     // Return a clarification request as a streamText result
-    return streamText({
+    const clarificationResponse = streamText({
       model: defaultModel,
       system: `You are a clarification agent. Your job is to ask the user for clarification on their question.`,
       prompt: `Here is the message history:
@@ -215,6 +227,13 @@ Please reply to the user with a clarification request.`,
       },
       onFinish: onFinish,
     });
+
+    // Report usage to context (usage is a promise for streaming calls)
+    clarificationResponse.usage.then((usage: any) => {
+      ctx.reportUsage("clarification-response", usage);
+    });
+
+    return clarificationResponse;
   }
   
   console.log("✅ Question is clear, proceeding with search");
@@ -243,6 +262,18 @@ Please reply to the user with a clarification request.`,
         action: nextAction,
       });
     }
+
+    // Send token usage annotation after each action
+    if (writeMessageAnnotation) {
+      const usageEntries = ctx.getUsageEntries();
+      if (usageEntries.length > 0) {
+        const totalTokens = usageEntries.reduce((sum, entry) => sum + entry.totalTokens, 0);
+        writeMessageAnnotation({
+          type: "USAGE",
+          totalTokens,
+        });
+      }
+    }
     
     // We execute the action and update the state of our system
     if (nextAction.type === "continue") {
@@ -257,6 +288,18 @@ Please reply to the user with a clarification request.`,
       console.log("✨ Optimized query:", optimizedQuery);
       
       await searchAndScrape(ctx, optimizedQuery, langfuseTraceId, writeMessageAnnotation);
+      
+      // Send updated token usage annotation after search and scrape
+      if (writeMessageAnnotation) {
+        const usageEntries = ctx.getUsageEntries();
+        if (usageEntries.length > 0) {
+          const totalTokens = usageEntries.reduce((sum, entry) => sum + entry.totalTokens, 0);
+          writeMessageAnnotation({
+            type: "USAGE",
+            totalTokens,
+          });
+        }
+      }
     } else if (nextAction.type === "answer") {
       console.log("🎯 Ready to answer the question");
       return answerQuestion(ctx, { 
