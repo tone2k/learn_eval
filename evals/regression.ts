@@ -7,11 +7,11 @@ export const regressionData: { input: any[]; expected: string }[] = [
         id: "1",
         role: "user",
         content:
-          "How many years older is Elon Musk than Mark Zuckerberg?",
+          "What are the latest developments in autonomous vehicle safety regulations?",
       },
     ],
     expected:
-      "13 years. Elon Musk was born on June 28, 1971, and Mark Zuckerberg was born on May 14, 1984, making Musk about 13 years older.",
+      "Recent developments include updated NHTSA guidelines, EU's new AV regulatory framework, mandatory safety assessments, and requirements for remote monitoring systems.",
   },
   {
     input: [
@@ -19,11 +19,11 @@ export const regressionData: { input: any[]; expected: string }[] = [
         id: "2",
         role: "user",
         content:
-          "Which country has the larger population today: the one whose capital is Ottawa or the one whose capital is Canberra?",
+          "What are the environmental benefits and drawbacks of nuclear energy?",
       },
     ],
     expected:
-      "Canada (capital Ottawa) has a larger population than Australia (capital Canberra). Canada has approximately 41.5 million people compared to Australia's approximately 27.4 million people.",
+      "Benefits include zero carbon emissions during operation and high energy density. Drawbacks include radioactive waste disposal, potential accidents, and water usage for cooling.",
   },
   {
     input: [
@@ -31,11 +31,11 @@ export const regressionData: { input: any[]; expected: string }[] = [
         id: "3",
         role: "user",
         content:
-          "Which city hosted the Winter Olympics in the year Nelson Mandela became President of South Africa?",
+          "How does blockchain technology ensure transaction security?",
       },
     ],
     expected:
-      "Lillehammer, Norway. Nelson Mandela was inaugurated as President of South Africa on May 10, 1994, and the 1994 Winter Olympics were held in Lillehammer, Norway.",
+      "Blockchain ensures security through cryptographic hashing, distributed consensus mechanisms, immutability of records, and decentralized validation across multiple nodes.",
   },
   {
     input: [
@@ -43,10 +43,10 @@ export const regressionData: { input: any[]; expected: string }[] = [
         id: "4",
         role: "user",
         content:
-          "Which planet has a moon named after the Roman goddess of wisdom, and what is that planet's position from the Sun?",
+          "What are the latest advances in Alzheimer's disease treatment?",
       },
     ],
     expected:
-      "Jupiter is the 5th planet from the Sun and has a moon named Minerva (named after the Roman goddess of wisdom). However, if referring to major moons, Jupiter's moon Europa is sometimes associated with wisdom themes, and Jupiter remains the 5th planet from the Sun.",
+      "Recent advances include FDA-approved drugs like Leqembi and Aduhelm targeting amyloid plaques, new blood biomarker tests, and promising immunotherapy approaches."
   },
 ]; 

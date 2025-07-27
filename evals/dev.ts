@@ -1,18 +1,18 @@
 import type { UIMessage } from "ai";
 
 export const devData: { input: any[]; expected: string }[] = [
-  // Most challenging multi-hop reasoning cases for dev testing
+  // Deep research test cases for development
   {
     input: [
       {
         id: "1",
         role: "user",
         content:
-          "Identify the capital city of the U.S. state whose two-letter postal abbreviation matches the chemical symbol of the element with atomic number 31.",
+          "What are the latest advancements in quantum computing error correction in 2024?",
       },
     ],
     expected:
-      "Atlanta. Atomic number 31 is Gallium (chemical symbol Ga), which matches Georgia's postal abbreviation GA, and Atlanta is Georgia's capital city.",
+      "Recent advancements include improved topological error correction codes, real-time error mitigation techniques, and breakthroughs in surface code implementations achieving lower error thresholds.",
   },
   {
     input: [
@@ -20,11 +20,11 @@ export const devData: { input: any[]; expected: string }[] = [
         id: "2",
         role: "user",
         content:
-          "Multiply the number of letters in the English name of the element whose symbol is Fe by the number of official national languages of Switzerland.",
+          "What are the environmental impacts of lithium mining for EV batteries?",
       },
     ],
     expected:
-      "16. Fe is the symbol for Iron (4 letters), and Switzerland has 4 official national languages (German, French, Italian, and Romansh). 4 × 4 = 16.",
+      "Lithium mining causes water depletion, soil contamination, toxic chemical release, habitat destruction, and significant carbon emissions during extraction and processing.",
   },
   {
     input: [
@@ -32,11 +32,11 @@ export const devData: { input: any[]; expected: string }[] = [
         id: "3",
         role: "user",
         content:
-          "What is the family (taxonomic) of the bird that is the state bird of the U.S. state nicknamed 'The Garden State'?",
+          "Compare the performance of GPT-4 vs Claude 3 for code generation tasks",
       },
     ],
     expected:
-      "Fringillidae. New Jersey is nicknamed 'The Garden State', its state bird is the American Goldfinch, and goldfinches belong to the family Fringillidae.",
+      "Both models excel at code generation, with GPT-4 showing strength in diverse programming languages while Claude 3 demonstrates superior debugging capabilities and cleaner code structure.",
   },
   {
     input: [
@@ -44,10 +44,10 @@ export const devData: { input: any[]; expected: string }[] = [
         id: "4",
         role: "user",
         content:
-          "What is the architectural style of the building where the author of '1984' was born?",
+          "What are the latest developments in CRISPR gene editing technology?",
       },
     ],
     expected:
-      "Colonial architecture. George Orwell (author of '1984') was born in Motihari, India, which was part of British India and features colonial British architecture from that period.",
+      "Recent CRISPR advances include prime editing 3, epigenome editors, improved delivery methods using AAV vectors, and enhanced specificity reducing off-target effects."
   },
 ]; 

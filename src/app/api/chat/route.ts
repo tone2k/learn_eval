@@ -7,12 +7,13 @@ import { env } from "~/env";
 import { auth } from "~/server/auth";
 import { generateChatTitle, getChat, upsertChat } from "~/server/db/queries";
 import { checkRateLimit, recordRateLimit, type RateLimitConfig } from "~/server/rate-limit";
-import type { OurMessage, UserLocation } from "~/types";
+import type { OurMessage, UserLocation, DatabaseMessage, UsageMetrics } from "~/types";
 import { messageToString } from "~/utils";
 
 const langfuse = new Langfuse({
   environment: env.NODE_ENV,
 });
+
 
 // Rate limiting configuration
 const rateLimitConfig: RateLimitConfig = {
@@ -23,7 +24,7 @@ const rateLimitConfig: RateLimitConfig = {
 };
 
 // Helper function to transform database message format to AI SDK format
-function transformDatabaseMessageToAISDK(msg: any, index: number): OurMessage {
+function transformDatabaseMessageToAISDK(msg: DatabaseMessage, index: number): OurMessage {
   console.log(`🔍 Message ${index}:`, {
     id: msg.id,
     role: msg.role,
@@ -35,9 +36,9 @@ function transformDatabaseMessageToAISDK(msg: any, index: number): OurMessage {
 
   // In AI SDK v5, messages use parts instead of content
   // If we have stored parts, use them; otherwise convert content to text part
-  let parts = [];
+  let parts: Array<{ type: string; text?: string; [key: string]: unknown }> = [];
   
-  if (msg.parts) {
+  if (msg.parts && Array.isArray(msg.parts)) {
     parts = msg.parts;
   } else if (msg.content) {
     // Convert legacy content to text part
@@ -47,9 +48,9 @@ function transformDatabaseMessageToAISDK(msg: any, index: number): OurMessage {
 
   const transformedMessage: OurMessage = {
     id: msg.id,
-    role: msg.role,
-    parts: parts,
-  } as OurMessage;
+    role: msg.role as "user" | "assistant" | "system",
+    parts: parts as OurMessage['parts'],
+  };
 
   console.log(`🔍 Transformed message ${index}:`, transformedMessage);
   return transformedMessage;
@@ -98,7 +99,7 @@ export async function GET(req: Request) {
     console.log("🔍 Raw database messages:", JSON.stringify(existingChat.messages, null, 2));
 
     const messages = existingChat.messages.map((msg, index) => 
-      transformDatabaseMessageToAISDK(msg, index)
+      transformDatabaseMessageToAISDK(msg as DatabaseMessage, index)
     );
 
     console.log("🔍 Processed messages for frontend:", JSON.stringify(messages, null, 2));
@@ -213,7 +214,7 @@ export async function POST(req: Request) {
         input: {
           userId: session.user.id,
           chatId,
-          title: "Generating...",
+          title: "Analyzing...",
           messages: messages.filter(m => m.role === "user"),
         },
       });
@@ -222,7 +223,7 @@ export async function POST(req: Request) {
       await upsertChat({
         userId: session.user.id,
         chatId: chatId,
-        title: "Generating...",
+        title: "Analyzing...",
         messages: messages.filter(m => m.role === "user"),
       });
       
@@ -252,10 +253,10 @@ export async function POST(req: Request) {
         },
       });
       
-      // Transform existing messages from database format to AI SDK format
-      const existingMessages = existingChat.messages.map((msg, index) => 
-        transformDatabaseMessageToAISDK(msg, index)
-      );
+      // Transform existing messages from database format to AI SDK format  
+      const existingMessages = existingChat?.messages?.map((msg, index) => 
+        transformDatabaseMessageToAISDK(msg as DatabaseMessage, index)
+      ) ?? [];
       
       // The frontend sends only new messages, so append them to existing ones
       conversationMessages = [...existingMessages, ...messages];

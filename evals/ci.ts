@@ -7,11 +7,11 @@ export const ciData: { input: any[]; expected: string }[] = [
         id: "1",
         role: "user",
         content:
-          "The same year the Berlin Wall fell, which team won the NBA Finals?",
+          "What are the current best practices for microservices architecture in 2024?",
       },
     ],
     expected:
-      "Detroit Pistons. The Berlin Wall fell in 1989, and the Detroit Pistons won the 1989 NBA Finals, defeating the Los Angeles Lakers.",
+      "Current best practices include service mesh adoption, event-driven architecture, containerization with Kubernetes, observability with OpenTelemetry, and API gateway patterns.",
   },
   {
     input: [
@@ -19,11 +19,11 @@ export const ciData: { input: any[]; expected: string }[] = [
         id: "2",
         role: "user",
         content:
-          "Name a U.S. president born in the same state as the author of The Old Man and the Sea.",
+          "What are the latest breakthroughs in renewable energy storage?",
       },
     ],
     expected:
-      "Ronald Reagan. Ernest Hemingway (author of The Old Man and the Sea) was born in Oak Park, Illinois, and Ronald Reagan was also born in Illinois (Tampico, Illinois).",
+      "Recent breakthroughs include solid-state batteries, gravity-based energy storage, advanced flow batteries, and green hydrogen storage systems with improved efficiency.",
   },
   {
     input: [
@@ -31,11 +31,11 @@ export const ciData: { input: any[]; expected: string }[] = [
         id: "3",
         role: "user",
         content:
-          "What currency does the country whose highest point is Mount Kilimanjaro use?",
+          "How do large language models like GPT handle context windows?",
       },
     ],
     expected:
-      "Tanzanian shilling (TZS). Mount Kilimanjaro is located in Tanzania, and Tanzania's official currency is the Tanzanian shilling.",
+      "LLMs use attention mechanisms, positional encodings, and sliding window techniques to manage context, with recent models employing techniques like Flash Attention for efficiency.",
   },
   {
     input: [
@@ -43,10 +43,10 @@ export const ciData: { input: any[]; expected: string }[] = [
         id: "4",
         role: "user",
         content:
-          "Who shared the Nobel Prize in Physics the year Apple released the first iPhone?",
+          "What are the privacy implications of facial recognition technology?",
       },
     ],
     expected:
-      "Albert Fert and Peter Grünberg. Apple released the first iPhone in 2007, and the 2007 Nobel Prize in Physics was awarded to Albert Fert and Peter Grünberg for their discovery of giant magnetoresistance.",
+      "Facial recognition raises concerns about mass surveillance, bias in algorithms, data breaches, consent issues, and potential misuse by authorities or malicious actors."
   },
 ]; 

@@ -39,7 +39,7 @@ export async function fetchFaviconAsDataUrl(url: string): Promise<string> {
   try {
     const response = await fetch(faviconUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DeepSearch/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; 411/1.0)',
       },
       // Short timeout since this is for UI enhancement
       signal: AbortSignal.timeout(3000),

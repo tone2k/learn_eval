@@ -18,6 +18,23 @@ export interface ChatMessage {
   createdAt?: Date;
 }
 
+// Database message format
+export interface DatabaseMessage {
+  id: string;
+  role: string;
+  parts?: Array<{ type: string; text?: string; [key: string]: unknown }>;
+  content?: unknown;
+  annotations?: unknown;
+  createdAt?: Date;
+}
+
+// Type for usage tracking
+export interface UsageMetrics {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 export interface Chat {
   id: string;
   title: string;

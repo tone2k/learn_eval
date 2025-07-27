@@ -45,7 +45,7 @@ export const ChatMessage = ({
   role,
   userName,
 }: ChatMessageProps) => {
-  console.log(`🎨 ChatMessage received:`, { role, partsCount: parts?.length, parts: parts?.map(p => ({ type: p.type, hasText: !!p.text })) });
+  console.log(`🎨 ChatMessage received:`, { role, partsCount: parts?.length, parts: parts?.map(p => ({ type: p.type, hasText: !!(p as any).text })) });
   const isAI = role === "assistant";
 
   // Extract data parts

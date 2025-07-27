@@ -24,7 +24,7 @@ const uncachedSummarizeURL = async (
     })
     .join("\n\n");
 
-  // Create the summarization prompt based on Together.ai's approach
+  // Create the summarization prompt
   const prompt = `You are a research extraction specialist. Given a research topic and raw web content, create a thoroughly detailed synthesis as a cohesive narrative that flows naturally between key concepts.
 
 Extract the most valuable information related to the research topic, including relevant facts, statistics, methodologies, claims, and contextual information. Preserve technical terminology and domain-specific language from the source material.

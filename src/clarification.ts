@@ -27,7 +27,7 @@ export const checkIfQuestionNeedsClarification = async (
     } : {
       isEnabled: false,
     },
-    system: `You are a clarification assessment agent for a DeepSearch system. Your job is to determine if a user's question needs clarification before proceeding with a search.
+    system: `You are a clarification assessment agent for a 411 research system. Your job is to determine if a user's question needs clarification before proceeding with a search.
 
 Analyze the conversation and determine if the latest user message needs clarification.
 
@@ -45,9 +45,9 @@ Respond with JSON: { "needsClarification": boolean, "reason": "string if true" }
 
   // Report usage to context
   ctx.reportUsage("clarification-check", {
-    promptTokens: result.usage.inputTokens || 0,
-    completionTokens: result.usage.outputTokens || 0,
-    totalTokens: result.usage.totalTokens || 0,
+    promptTokens: result.usage.inputTokens ?? 0,
+    completionTokens: result.usage.outputTokens ?? 0,
+    totalTokens: result.usage.totalTokens ?? 0,
   });
 
   return result.object;

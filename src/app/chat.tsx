@@ -3,12 +3,11 @@
 import { useChat } from "@ai-sdk/react";
 import { Square } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { StickToBottom } from "use-stick-to-bottom";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
 import type { OurMessage } from "~/types";
-import { isNewChatCreated } from "~/utils";
 
 interface ChatProps {
   userName: string;
@@ -65,10 +64,10 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         console.log('🔎 EFFECT 1 - API response status:', response.status);
         
         if (response.ok) {
-          const data = await response.json();
+          const data = await response.json() as { messages?: OurMessage[] };
           console.log("🔎 EFFECT 1 - Success! Received", data.messages?.length || 0, 'messages');
           
-          setInitialMessages(data.messages || []);
+          setInitialMessages(data.messages ?? []);
           console.log('🔎 EFFECT 1 - Set initialMessages to', data.messages?.length || 0, 'messages');
         } else {
           console.error("🔎 EFFECT 1 - Failed to load, status:", response.status);
@@ -83,7 +82,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
       }
     };
 
-    loadExistingMessages();
+    loadExistingMessages().catch(console.error);
   }, [chatId, isNewChat, currentChatId]);
 
   // Manual input state for v5
@@ -106,9 +105,6 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         name: error.name,
         stack: error.stack
       });
-    },
-    onResponse: (response) => {
-      console.log("📡 useChat received response:", response.status, response.statusText);
     },
     onFinish: (message) => {
       console.log("✅ useChat finished with message:", message);
@@ -204,7 +200,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
       <div className="flex flex-1 flex-col">
         <div className="mx-auto w-full max-w-[65ch] flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500">
           <div className="flex h-full items-center justify-center">
-            <p className="text-gray-500">Loading conversation...</p>
+            <p className="text-gray-500">Loading your research session...</p>
           </div>
         </div>
       </div>
@@ -221,7 +217,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         <StickToBottom.Content className="mx-auto w-full max-w-[65ch] flex-1 flex flex-col gap-4 p-4">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center py-32">
-              <p className="text-gray-500">Start a conversation...</p>
+              <p className="text-gray-500">Ask me anything - I&apos;ll research it for you...</p>
             </div>
           ) : (
             <>
@@ -246,7 +242,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Say something..."
+                placeholder="What would you like to research?"
                 autoFocus
                 aria-label="Chat input"
                 className="flex-1 rounded border border-gray-700 bg-gray-800 p-2 text-gray-200 placeholder-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"

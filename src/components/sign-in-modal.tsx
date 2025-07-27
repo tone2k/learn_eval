@@ -13,10 +13,10 @@ export const SignInModal = ({ isOpen, onClose }: SignInModalProps) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-gray-900 p-6 shadow-xl">
         <h2 className="mb-4 text-xl font-semibold text-gray-200">
-          Sign in required
+          Sign in to continue
         </h2>
         <p className="mb-6 text-gray-400">
-          Please sign in to continue your conversation.
+          Please sign in to continue your research session.
         </p>
         <div className="flex justify-end gap-3">
           <button

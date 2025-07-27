@@ -27,7 +27,7 @@ export const checkIsSafe = async (
     } : {
       isEnabled: false,
     },
-    system: `You are a content safety classifier for a DeepSearch application. Your job is to analyze user queries and determine if they should be processed or refused based on safety guidelines.
+    system: `You are a content safety classifier for a 411 research application. Your job is to analyze user queries and determine if they should be processed or refused based on safety guidelines.
 
 You will receive the complete message history in XML format:
 

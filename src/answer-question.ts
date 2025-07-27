@@ -2,6 +2,7 @@ import { smoothStream, streamText, type StreamTextResult } from "ai";
 import { markdownJoinerTransform } from "~/markdown-transform";
 import { defaultModel } from "~/models";
 import type { SystemContext } from "~/system-context";
+import type { UsageMetrics } from "~/types";
 
 interface AnswerOptions {
   isFinal?: boolean;
@@ -14,7 +15,7 @@ interface AnswerOptions {
 export function answerQuestion(
   context: SystemContext,
   opts: AnswerOptions
-): StreamTextResult<{}, string> {
+) {
   const { isFinal = false, langfuseTraceId } = opts;
   
   // Get current date for the system prompt
@@ -220,8 +221,13 @@ Remember: You're that friend who can explain anything clearly. Be warm, knowledg
   });
 
   // Report usage to context (usage is a promise for streaming calls)
-  result.usage.then((usage: any) => {
-    context.reportUsage("answer-question", usage);
+  void result.usage.then((usage) => {
+    const metrics: UsageMetrics = {
+      promptTokens: usage.inputTokens || 0,
+      completionTokens: usage.outputTokens || 0,
+      totalTokens: usage.totalTokens || 0,
+    };
+    context.reportUsage("answer-question", metrics);
   });
 
   return result;

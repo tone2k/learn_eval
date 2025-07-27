@@ -4,7 +4,7 @@ import { env } from "~/env";
 
 export function register() {
   registerOTel({
-    serviceName: "langfuse-vercel-ai-nextjs-example",
+    serviceName: "fouroneone",
     traceExporter: new LangfuseExporter({
       environment: env.NODE_ENV,
     }),

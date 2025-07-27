@@ -53,7 +53,7 @@ export const upsertChat = async (opts: {
       await tx.insert(chats)
         .values({
           id: chatId,
-          title: title ?? "New Chat",
+          title: title ?? "New Research",
           userId,
         })
         .onConflictDoNothing(); // Prevents duplicate key errors

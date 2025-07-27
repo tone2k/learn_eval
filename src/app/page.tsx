@@ -1,4 +1,3 @@
-import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { auth } from "~/server/auth/index.ts";
 import { getChats } from "~/server/db/queries";
@@ -24,7 +23,7 @@ export default async function HomePage({
   // Use chatId from URL, null for new chats
   const chatIdFromUrl = id;
   const activeChatId = chatIdFromUrl; // Use the actual chatId from URL for highlighting
-  const chatId = chatIdFromUrl || null;
+  const chatId = chatIdFromUrl ?? null;
   const isNewChat = !chatIdFromUrl;
 
   return (
@@ -33,7 +32,7 @@ export default async function HomePage({
       <div className="flex w-64 flex-col border-r border-gray-700 bg-gray-900">
         <div className="p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-400">Your Chats</h2>
+            <h2 className="text-sm font-semibold text-gray-400">Research Sessions</h2>
             {isAuthenticated && <NewChatButton />}
           </div>
         </div>
@@ -56,8 +55,8 @@ export default async function HomePage({
           ) : (
             <p className="text-sm text-gray-500">
               {isAuthenticated
-                ? "No chats yet. Start a new conversation!"
-                : "Sign in to start chatting"}
+                ? "No research sessions yet. Start your first query!"
+                : "Sign in to start researching"}
             </p>
           )}
         </div>

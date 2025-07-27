@@ -8,5 +8,5 @@ export default {
   dbCredentials: {
     url: env.DATABASE_URL,
   },
-  tablesFilter: ["ai-app-template_*"],
+  tablesFilter: ["fouroneone_*"],
 } satisfies Config;

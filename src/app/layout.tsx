@@ -6,7 +6,7 @@ import { SessionProviderWrapper } from "~/components/session-provider";
 import { auth } from "~/server/auth";
 
 export const metadata: Metadata = {
-  title: "AI App Example",
+  title: "411 - Deep Research Assistant",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

@@ -17,11 +17,7 @@ export const checkFactuality = async (opts: {
 }) => {
   const { object } = await generateObject({
     model: factualityModel,
-    /**
-     * Prompt taken from autoevals:
-     *
-     * {@link https://github.com/braintrustdata/autoevals/blob/5aa20a0a9eb8fc9e07e9e5722ebf71c68d082f32/templates/factuality.yaml}
-     */
+    // Factuality check prompt based on expert comparison methodology
     prompt: `
       You are comparing a submitted answer to an expert answer on a given question. Here is the data:
       [BEGIN DATA]

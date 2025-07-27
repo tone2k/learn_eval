@@ -22,7 +22,7 @@ export function truncateText(text: string, maxLength: number): string {
 export function sanitizeTitle(content: string): string {
   // Extract first line and clean it up for use as a title
   const firstLine = content.split('\n')[0];
-  return truncateText(firstLine?.trim() || "New Chat", 50);
+  return truncateText(firstLine?.trim() || "New Research", 50);
 }
 
 export function isNewChatCreated(
