@@ -132,4 +132,30 @@ export const getChats = async (userId: string) => {
     .from(chats)
     .where(eq(chats.userId, userId))
     .orderBy(desc(chats.updatedAt));
+};
+
+export const deleteChat = async (opts: { userId: string; chatId: string }) => {
+  const { userId, chatId } = opts;
+
+  // Start a transaction to ensure data consistency
+  return await db.transaction(async (tx) => {
+    // Check if chat exists and belongs to the user
+    const existingChat = await tx
+      .select()
+      .from(chats)
+      .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+      .limit(1);
+
+    if (existingChat.length === 0) {
+      throw new Error("Chat not found or access denied");
+    }
+
+    // Delete messages first (foreign key constraint)
+    await tx.delete(messages).where(eq(messages.chatId, chatId));
+    
+    // Delete the chat
+    await tx.delete(chats).where(eq(chats.id, chatId));
+
+    return { success: true };
+  });
 }; 

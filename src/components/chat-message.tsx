@@ -6,7 +6,6 @@ interface ChatMessageProps {
   parts: OurMessage['parts'];
   role: string;
   userName: string;
-  dataParts?: Array<Extract<OurMessage['parts'][number], { type: 'data-newAction' | 'data-sources' | 'data-clarification' | 'data-usage' }>>;
 }
 
 const components: Components = {
@@ -45,25 +44,24 @@ export const ChatMessage = ({
   parts,
   role,
   userName,
-  dataParts = [],
 }: ChatMessageProps) => {
   const isAI = role === "assistant";
 
-  // Use dataParts prop instead of extracting from parts
-  const actionParts = dataParts.filter((part): part is Extract<typeof part, { type: 'data-newAction' }> => 
+  // Extract data parts directly from parts array
+  const actionParts = parts.filter((part): part is Extract<typeof part, { type: 'data-newAction' }> => 
     part.type === 'data-newAction'
   );
   
-  const sourcesParts = dataParts.filter((part): part is Extract<typeof part, { type: 'data-sources' }> => 
+  const sourcesParts = parts.filter((part): part is Extract<typeof part, { type: 'data-sources' }> => 
     part.type === 'data-sources'
   );
   
-  const clarificationParts = dataParts.filter((part): part is Extract<typeof part, { type: 'data-clarification' }> => 
+  const clarificationParts = parts.filter((part): part is Extract<typeof part, { type: 'data-clarification' }> => 
     part.type === 'data-clarification'
   );
 
   // Find the latest usage data part (if any)
-  const usagePart = isAI ? dataParts.findLast((part): part is Extract<typeof part, { type: 'data-usage' }> => 
+  const usagePart = isAI ? parts.findLast((part): part is Extract<typeof part, { type: 'data-usage' }> => 
     part.type === 'data-usage'
   ) : undefined;
 

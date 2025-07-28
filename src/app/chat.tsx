@@ -5,6 +5,7 @@ import { Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { StickToBottom } from "use-stick-to-bottom";
+import { AppHeader } from "~/components/app-header";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
 import type { OurMessage } from "~/types";
@@ -31,11 +32,6 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
   // Track if we're in the process of creating a chat to prevent duplicates
   const [isCreatingChat, setIsCreatingChat] = useState(false);
 
-  // Store data parts received from streaming, indexed by message ID
-  const [messageDataParts, setMessageDataParts] = useState<Record<string, Array<Extract<OurMessage['parts'][number], { type: 'data-newAction' | 'data-sources' | 'data-clarification' | 'data-usage' }>>>>({});
-  
-  // Track the current streaming message ID
-  const [currentStreamingMessageId, setCurrentStreamingMessageId] = useState<string | null>(null);
 
   // Load existing messages and handle chat switching
   useEffect(() => {
@@ -71,10 +67,10 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         
         if (response.ok) {
           const data = await response.json() as { messages?: OurMessage[] };
-          console.log("🔎 EFFECT 1 - Success! Received", data.messages?.length || 0, 'messages');
+          console.log("🔎 EFFECT 1 - Success! Received", data.messages?.length ?? 0, 'messages');
           
           setInitialMessages(data.messages ?? []);
-          console.log('🔎 EFFECT 1 - Set initialMessages to', data.messages?.length || 0, 'messages');
+          console.log('🔎 EFFECT 1 - Set initialMessages to', data.messages?.length ?? 0, 'messages');
         } else {
           console.error("🔎 EFFECT 1 - Failed to load, status:", response.status);
           setInitialMessages([]);
@@ -114,7 +110,6 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
     },
     onFinish: (finishData) => {
       console.log("✅ useChat finished with data:", finishData);
-      setCurrentStreamingMessageId(null); // Clear streaming message ID
     },
     onData: (data) => {
       console.log('📡 Frontend received data:', data);
@@ -133,29 +128,6 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         return;
       }
 
-      // Handle reasoning/data parts - collect them for the current streaming message
-      if (data.type === "data-newAction" || data.type === "data-sources" || data.type === "data-clarification" || data.type === "data-usage") {
-        
-        // Find the current assistant message that's being streamed
-        const currentAssistantMessage = messages.findLast(m => m.role === 'assistant');
-        let messageId = currentAssistantMessage?.id;
-        
-        // If no assistant message yet, we need to wait or use the streaming ID
-        if (!messageId) {
-          messageId = currentStreamingMessageId || '_streaming_';
-          if (!currentStreamingMessageId) {
-            setCurrentStreamingMessageId('_streaming_');
-          }
-        }
-        
-        setMessageDataParts(prev => ({
-          ...prev,
-          [messageId]: [
-            ...(prev[messageId] || []),
-            data
-          ]
-        }));
-      }
     },
   });
   
@@ -234,7 +206,7 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
       <div className="flex flex-1 flex-col">
         <div className="mx-auto w-full max-w-[65ch] flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500">
           <div className="flex h-full items-center justify-center">
-            <p className="text-gray-500">Loading your research session...</p>
+            <p className="text-navy-900 font-medium">Loading your research session...</p>
           </div>
         </div>
       </div>
@@ -244,56 +216,31 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
   return (
     <>
       <StickToBottom
-        className="flex flex-1 flex-col [&>div]:scrollbar-thin [&>div]:scrollbar-track-gray-800 [&>div]:scrollbar-thumb-gray-600 [&>div]:hover:scrollbar-thumb-gray-500"
+        className="flex flex-1 flex-col [&>div]:scrollbar-thin [&>div]:scrollbar-track-pink-200 [&>div]:scrollbar-thumb-pink-400 [&>div]:hover:scrollbar-thumb-pink-500"
         resize="instant"
         initial="instant"
       >
         <StickToBottom.Content className="mx-auto w-full max-w-[65ch] flex-1 flex flex-col gap-4 p-4">
           {messages.length === 0 ? (
-            <div className="flex h-full items-center justify-center py-32">
-              <p className="text-gray-500">Ask me anything - I&apos;ll research it for you...</p>
+            <div className="flex h-full flex-col items-center justify-center py-32">
+              <AppHeader size="large" className="mb-6" />
+              <p className="text-navy-900 text-center font-medium">What&apos;s the latest? I&apos;ll dig deep and get you the real story...</p>
             </div>
           ) : (
             <>
-              {messages.map((message, index) => {
-                // Get data parts for this message (if any)
-                let dataParts = message.id ? messageDataParts[message.id] || [] : [];
-                
-                // For assistant messages, also check if we have data parts under streaming key
-                if (message.role === 'assistant' && dataParts.length === 0) {
-                  const streamingParts = messageDataParts['_streaming_'] || [];
-                  if (streamingParts.length > 0) {
-                    dataParts = streamingParts;
-                    
-                    // Move streaming parts to actual message ID
-                    if (message.id) {
-                      setMessageDataParts(prev => {
-                        const { ['_streaming_']: _, ...rest } = prev;
-                        return {
-                          ...rest,
-                          [message.id]: streamingParts
-                        };
-                      });
-                    }
-                  }
-                }
-                
-                
-                return (
-                  <ChatMessage
-                    key={message.id || `message-${index}`}
-                    parts={message.parts ?? []}
-                    role={message.role}
-                    userName={userName}
-                    dataParts={dataParts}
-                  />
-                );
-              })}
+              {messages.map((message, index) => (
+                <ChatMessage
+                  key={message.id || `message-${index}`}
+                  parts={message.parts ?? []}
+                  role={message.role}
+                  userName={userName}
+                />
+              ))}
             </>
           )}
         </StickToBottom.Content>
 
-        <div className="border-t border-gray-700">
+        <div className="border-t border-pink-200">
           <form
             onSubmit={handleFormSubmit}
             className="mx-auto max-w-[65ch] p-4"
@@ -302,17 +249,17 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="What would you like to research?"
+                placeholder="Who is T Swifts new boyfriend???"
                 autoFocus
                 aria-label="Chat input"
-                className="flex-1 rounded border border-gray-700 bg-gray-800 p-2 text-gray-200 placeholder-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+                className="flex-1 rounded border border-pink-200 bg-white p-2 text-navy-900 placeholder-navy-600 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500 disabled:opacity-50"
                 disabled={isLoading || isLoadingChat}
               />
               <button
                 type={isLoading ? "button" : "submit"}
                 onClick={isLoading ? stop : undefined}
                 disabled={(!input.trim() && !isLoading) || isLoadingChat}
-                className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-600 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:hover:bg-gray-700"
+                className="rounded bg-pink-600 px-4 py-2 text-white hover:bg-pink-700 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500 disabled:opacity-50 disabled:hover:bg-pink-600 transition-colors"
               >
                 {isLoading ? <Square className="size-4" /> : "Send"}
               </button>

@@ -14,7 +14,7 @@ export function AuthButton({ isAuthenticated, userImage }: AuthButtonProps) {
   const router = useRouter();
 
   return isAuthenticated ? (
-    <div className="hover:bg-gray-750 flex items-center gap-2 rounded-lg bg-gray-800 p-2 text-gray-300">
+    <div className="hover:bg-pink-100 flex items-center gap-2 rounded-lg bg-white p-2 text-navy-900 border border-pink-200">
       {userImage && (
         <Image
           src={userImage}
@@ -29,7 +29,7 @@ export function AuthButton({ isAuthenticated, userImage }: AuthButtonProps) {
           router.push("/");
           void signOut();
         }}
-        className="flex w-full items-center justify-center p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className="flex w-full items-center justify-center p-1 text-sm text-navy-900 font-medium focus:outline-none focus:ring-2 focus:ring-pink-500"
       >
         Sign out
       </button>
@@ -37,7 +37,7 @@ export function AuthButton({ isAuthenticated, userImage }: AuthButtonProps) {
   ) : (
     <button
       onClick={() => void signIn("discord")}
-      className="hover:bg-gray-750 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-800 p-3 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+      className="hover:bg-pink-100 flex w-full items-center justify-center gap-2 rounded-lg bg-white p-3 text-sm text-navy-900 font-medium focus:outline-none focus:ring-2 focus:ring-pink-500 border border-pink-200"
     >
       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
         <path d={siDiscord.path} />
