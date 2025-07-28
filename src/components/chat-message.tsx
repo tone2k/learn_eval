@@ -47,12 +47,6 @@ export const ChatMessage = ({
   userName,
   dataParts = [],
 }: ChatMessageProps) => {
-  console.log(`🎨 ChatMessage received:`, { 
-    role, 
-    partsCount: parts?.length, 
-    dataPartsCount: dataParts.length,
-    dataParts: dataParts.map(p => ({ type: p.type }))
-  });
   const isAI = role === "assistant";
 
   // Use dataParts prop instead of extracting from parts
@@ -92,9 +86,7 @@ export const ChatMessage = ({
           {parts && parts.length > 0 ? (
             // Render message parts for tool calls and other structured content
             parts.map((part: any, index: number) => {
-              console.log(`🎨 ChatMessage rendering part ${index}:`, { type: part.type, hasText: !!part.text });
               if (part.type === "text") {
-                console.log(`🎨 Rendering text part: "${part.text?.substring(0, 50)}..."`);
                 return <Markdown key={index}>{part.text}</Markdown>;
               } else if (part.type === "tool-invocation") {
                 return (

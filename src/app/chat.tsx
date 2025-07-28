@@ -121,20 +121,20 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
       
       // Handle chat creation
       if (data.type === "data-newChatCreated") {
-        console.log('🚀 New chat created:', data.data.chatId);
+        const chatData = data.data as { chatId: string };
+        console.log('🚀 New chat created:', chatData.chatId);
         if (isNewChat && !isCreatingChat) {
           setIsCreatingChat(true); // Mark that we're creating the chat
-          setCurrentChatId(data.data.chatId);
-          console.log('🔄 Updated currentChatId to:', data.data.chatId);
+          setCurrentChatId(chatData.chatId);
+          console.log('🔄 Updated currentChatId to:', chatData.chatId);
           // Use router.push to navigate to the new chat
-          router.push(`?chatId=${data.data.chatId}`);
+          router.push(`?chatId=${chatData.chatId}`);
         }
         return;
       }
 
       // Handle reasoning/data parts - collect them for the current streaming message
       if (data.type === "data-newAction" || data.type === "data-sources" || data.type === "data-clarification" || data.type === "data-usage") {
-        console.log('🔧 Collecting data part:', data.type, data.data);
         
         // Find the current assistant message that's being streamed
         const currentAssistantMessage = messages.findLast(m => m.role === 'assistant');
@@ -142,14 +142,11 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         
         // If no assistant message yet, we need to wait or use the streaming ID
         if (!messageId) {
-          console.log('🔧 No assistant message found yet, using streaming ID');
           messageId = currentStreamingMessageId || '_streaming_';
           if (!currentStreamingMessageId) {
             setCurrentStreamingMessageId('_streaming_');
           }
         }
-        
-        console.log('🔧 Associating data part with message ID:', messageId);
         
         setMessageDataParts(prev => ({
           ...prev,
@@ -266,7 +263,6 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
                 if (message.role === 'assistant' && dataParts.length === 0) {
                   const streamingParts = messageDataParts['_streaming_'] || [];
                   if (streamingParts.length > 0) {
-                    console.log('🔧 Using streaming data parts for assistant message:', message.id);
                     dataParts = streamingParts;
                     
                     // Move streaming parts to actual message ID
@@ -282,7 +278,6 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
                   }
                 }
                 
-                console.log('🎨 Rendering message', message.id, 'with', dataParts.length, 'data parts');
                 
                 return (
                   <ChatMessage
