@@ -52,10 +52,13 @@ export class SystemContext {
   }
 
   shouldStop() {
-    return this.step >= 10;
+    const shouldStop = this.step >= 5; // Reduced from 10 to 5 for better performance
+    console.log(`🛑 shouldStop() check: step=${this.step}, shouldStop=${shouldStop}`);
+    return shouldStop;
   }
 
   incrementStep() {
+    console.log(`📈 incrementStep(): ${this.step} → ${this.step + 1}`);
     this.step++;
   }
 

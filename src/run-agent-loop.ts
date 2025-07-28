@@ -256,9 +256,16 @@ Please reply to the user with a clarification request.`,
   const latestUserMessage = ctx.getLatestUserMessage();
   console.log("🤖 Starting agent loop for query:", latestUserMessage);
   
-  // A loop that continues until we have an answer or we've taken 10 actions
+  // A loop that continues until we have an answer or we've taken 5 actions
   while (!ctx.shouldStop()) {
-    console.log(`🔄 Step ${ctx.getCurrentStep() + 1}/10`);
+    const currentStep = ctx.getCurrentStep() + 1; // 1-indexed for display
+    console.log(`🔄 Step ${currentStep}/5`);
+    
+    // Safety check to prevent infinite loops
+    if (currentStep > 5) {
+      console.error("🚨 Safety break: step exceeded maximum, forcing exit");
+      break;
+    }
     
     // We choose the next action based on the state of our system
     const nextAction: Action = await getNextAction(ctx, langfuseTraceId);
@@ -269,11 +276,15 @@ Please reply to the user with a clarification request.`,
       ctx.setLastFeedback(nextAction.feedback);
     }
     
-    // Send progress annotation to the UI
+    // Send progress annotation to the UI with step information
     if (writeMessagePart) {
       await writeMessagePart({
         type: "data-newAction",
-        data: nextAction,
+        data: {
+          ...nextAction,
+          step: currentStep,
+          maxSteps: 5,
+        },
       });
     }
 
@@ -289,6 +300,9 @@ Please reply to the user with a clarification request.`,
         });
       }
     }
+
+    // Increment step counter BEFORE executing the action to ensure proper counting
+    ctx.incrementStep();
     
     // We execute the action and update the state of our system
     if (nextAction.type === "continue") {
@@ -323,12 +337,9 @@ Please reply to the user with a clarification request.`,
         langfuseTraceId,
       });
     }
-    
-    // We increment the step counter
-    ctx.incrementStep();
   }
   
-  // If we've taken 10 actions and still don't have an answer,
+  // If we've taken 5 actions and still don't have an answer,
   // we ask the LLM to give its best attempt at an answer
   console.log("⏰ Reached maximum steps, providing final answer");
   return answerQuestion(ctx, { 

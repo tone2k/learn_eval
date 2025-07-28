@@ -25,7 +25,7 @@ export const env = createEnv({
     LANGFUSE_BASEURL: z.string().url(),
     EVAL_DATASET: z.enum(["dev", "ci", "regression"]).default("dev"),
     SEARCH_RESULTS_COUNT: z.coerce.number().default(3),
-    MAX_PAGES_TO_SCRAPE: z.coerce.number().default(6),
+    MAX_PAGES_TO_SCRAPE: z.coerce.number().default(4),
   },
 
   /**

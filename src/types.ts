@@ -80,6 +80,8 @@ export interface ContinueAction {
   reasoning: string;
   query: string;
   feedback?: string;
+  step?: number;
+  maxSteps?: number;
 }
 
 export interface AnswerAction {
@@ -87,6 +89,8 @@ export interface AnswerAction {
   title: string;
   reasoning: string;
   feedback?: string;
+  step?: number;
+  maxSteps?: number;
 }
 
 export type Action = ContinueAction | AnswerAction;

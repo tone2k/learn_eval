@@ -96,7 +96,10 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
     api: currentChatId ? `/api/chat?chatId=${currentChatId}` : '/api/chat',
     messages: initialMessages,
   };
-  console.log('🔧 useChat config:', useChatConfig);
+  console.log('🔧 useChat config:', {
+    ...useChatConfig,
+    messages: useChatConfig.messages.map(m => ({ id: m.id, role: m.role, partsCount: m.parts?.length }))
+  });
   
   const { messages, sendMessage, status, stop, error, setMessages } = useChat<OurMessage>({
     ...useChatConfig,
@@ -110,6 +113,8 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
     },
     onFinish: (finishData) => {
       console.log("✅ useChat finished with data:", finishData);
+      console.log("✅ useChat finished - current messages count:", messages.length);
+      console.log("✅ useChat finished - messages:", messages.map(m => ({ id: m.id, role: m.role, partsCount: m.parts?.length })));
     },
     onData: (data) => {
       console.log('📡 Frontend received data:', data);
@@ -127,35 +132,40 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         }
         return;
       }
+      
+      // Log all other data types we receive
+      console.log('📡 Processing data type:', data.type, 'Current messages count:', messages.length);
 
     },
   });
   
   // Sync initialMessages with useChat when they change (after useChat is defined)
+  // Remove 'messages' from dependency array to prevent infinite re-renders during streaming
   useEffect(() => {
     console.log('🔎 EFFECT 2 - Sync check:', {
       initialMessagesLength: initialMessages.length,
       useChatMessagesLength: messages.length,
       hasSetMessages: !!setMessages,
+      initialMessages: initialMessages.map(m => ({ id: m.id, role: m.role, partsCount: m.parts?.length })),
+      currentMessages: messages.map(m => ({ id: m.id, role: m.role, partsCount: m.parts?.length })),
       timestamp: new Date().toISOString()
     });
     
-    if (initialMessages.length > 0) {
-      console.log('🔎 EFFECT 2 - Have initialMessages, checking sync...');
-      
-      if (setMessages && messages.length === 0) {
+    // Only sync if we have initial messages and setMessages is available
+    if (initialMessages.length > 0 && setMessages) {
+      // Only sync if messages array is completely empty (not during streaming)
+      if (messages.length === 0) {
         console.log('🔎 EFFECT 2 - useChat messages empty, syncing now!');
-        setMessages(initialMessages);
-      } else if (setMessages && messages.length !== initialMessages.length) {
-        console.log('🔎 EFFECT 2 - Length mismatch, syncing now!');
+        console.log('🔎 EFFECT 2 - Syncing messages:', initialMessages.map(m => ({ id: m.id, role: m.role })));
         setMessages(initialMessages);
       } else {
-        console.log('🔎 EFFECT 2 - No sync needed');
+        console.log('🔎 EFFECT 2 - Messages already exist, skipping sync to prevent duplication');
+        console.log('🔎 EFFECT 2 - Current messages:', messages.map(m => ({ id: m.id, role: m.role })));
       }
     } else {
-      console.log('🔎 EFFECT 2 - No initialMessages to sync');
+      console.log('🔎 EFFECT 2 - No initialMessages to sync or setMessages not available');
     }
-  }, [initialMessages, messages, setMessages]);
+  }, [initialMessages, setMessages]); // Removed 'messages' from dependencies
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -228,14 +238,18 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
             </div>
           ) : (
             <>
-              {messages.map((message, index) => (
-                <ChatMessage
-                  key={message.id || `message-${index}`}
-                  parts={message.parts ?? []}
-                  role={message.role}
-                  userName={userName}
-                />
-              ))}
+              {console.log('🎨 RENDERING messages:', messages.length, 'messages:', messages.map(m => ({ id: m.id, role: m.role, partsCount: m.parts?.length })))}
+              {messages.map((message, index) => {
+                console.log(`🎨 Rendering message ${index}:`, { id: message.id, role: message.role, partsCount: message.parts?.length });
+                return (
+                  <ChatMessage
+                    key={message.id || `message-${index}`}
+                    parts={message.parts ?? []}
+                    role={message.role}
+                    userName={userName}
+                  />
+                );
+              })}
             </>
           )}
         </StickToBottom.Content>

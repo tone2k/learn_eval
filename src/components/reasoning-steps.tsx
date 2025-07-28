@@ -38,35 +38,40 @@ const Markdown = ({ children }: { children: string }) => {
 
 const Sources = ({ sources }: { sources: SearchSource[] }) => {
   return (
-    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-      {sources.map((source, index) => (
-        <a
-          key={index}
-          href={source.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-start gap-2 rounded border border-gray-700 bg-gray-800 p-3 hover:bg-gray-700 transition-colors"
-        >
-          {source.favicon && (
-            <img
-              src={source.favicon}
-              alt=""
-              className="mt-0.5 size-4 flex-shrink-0"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-gray-200 line-clamp-2">
-              {source.title}
+    <div className="mt-2">
+      <div className="text-xs text-gray-500 mb-2">
+        Found {sources.length} sources • Click to open
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {sources.map((source, index) => (
+          <a
+            key={index}
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start gap-2 rounded border border-gray-700 bg-gray-800 p-2 hover:bg-gray-700 transition-colors"
+          >
+            {source.favicon && (
+              <img
+                src={source.favicon}
+                alt=""
+                className="mt-0.5 size-4 flex-shrink-0"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-gray-200 line-clamp-1">
+                {source.title}
+              </div>
+              <div className="mt-0.5 text-xs text-gray-400 line-clamp-1">
+                {source.snippet}
+              </div>
             </div>
-            <div className="mt-1 text-xs text-gray-400 line-clamp-2">
-              {source.snippet}
-            </div>
-          </div>
-        </a>
-      ))}
+          </a>
+        ))}
+      </div>
     </div>
   );
 };
@@ -102,13 +107,24 @@ export const ReasoningSteps = ({
                       : "bg-gray-800 text-gray-300"
                   }`}
                 >
-                  {index + 1}
+                  {part.type === "data-newAction" && part.data.step ? part.data.step : index + 1}
                 </span>
-{part.type === "data-newAction" 
-                  ? part.data.title 
-                  : part.type === "data-sources" 
-                    ? "Sources" 
-                    : "Clarification"}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {part.type === "data-newAction" 
+                        ? part.data.title 
+                        : part.type === "data-sources" 
+                          ? `Sources (${part.data.length} found)` 
+                          : "Clarification"}
+                    </span>
+                    {part.type === "data-newAction" && part.data.step && part.data.maxSteps && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        Step {part.data.step}/{part.data.maxSteps}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </button>
               <div className={`${isOpen ? "mt-1" : "hidden"}`}>
                 {isOpen && (

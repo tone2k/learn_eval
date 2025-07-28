@@ -46,6 +46,13 @@ export const ChatMessage = ({
   userName,
 }: ChatMessageProps) => {
   const isAI = role === "assistant";
+  
+  console.log('💬 ChatMessage render:', { 
+    role, 
+    partsCount: parts.length, 
+    partTypes: parts.map(p => p.type),
+    timestamp: new Date().toISOString().split('T')[1]
+  });
 
   // Extract data parts directly from parts array
   const actionParts = parts.filter((part): part is Extract<typeof part, { type: 'data-newAction' }> => 
