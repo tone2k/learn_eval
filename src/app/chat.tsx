@@ -31,6 +31,12 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
   // Track if we're in the process of creating a chat to prevent duplicates
   const [isCreatingChat, setIsCreatingChat] = useState(false);
 
+  // Store data parts received from streaming, indexed by message ID
+  const [messageDataParts, setMessageDataParts] = useState<Record<string, Array<Extract<OurMessage['parts'][number], { type: 'data-newAction' | 'data-sources' | 'data-clarification' | 'data-usage' }>>>>({});
+  
+  // Track the current streaming message ID
+  const [currentStreamingMessageId, setCurrentStreamingMessageId] = useState<string | null>(null);
+
   // Load existing messages and handle chat switching
   useEffect(() => {
     console.log('🔎 EFFECT 1 - Message loading triggered:', { 
@@ -106,12 +112,14 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
         stack: error.stack
       });
     },
-    onFinish: (message) => {
-      console.log("✅ useChat finished with message:", message);
+    onFinish: (finishData) => {
+      console.log("✅ useChat finished with data:", finishData);
+      setCurrentStreamingMessageId(null); // Clear streaming message ID
     },
     onData: (data) => {
       console.log('📡 Frontend received data:', data);
-      // Handle data parts in real-time
+      
+      // Handle chat creation
       if (data.type === "data-newChatCreated") {
         console.log('🚀 New chat created:', data.data.chatId);
         if (isNewChat && !isCreatingChat) {
@@ -121,6 +129,35 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
           // Use router.push to navigate to the new chat
           router.push(`?chatId=${data.data.chatId}`);
         }
+        return;
+      }
+
+      // Handle reasoning/data parts - collect them for the current streaming message
+      if (data.type === "data-newAction" || data.type === "data-sources" || data.type === "data-clarification" || data.type === "data-usage") {
+        console.log('🔧 Collecting data part:', data.type, data.data);
+        
+        // Find the current assistant message that's being streamed
+        const currentAssistantMessage = messages.findLast(m => m.role === 'assistant');
+        let messageId = currentAssistantMessage?.id;
+        
+        // If no assistant message yet, we need to wait or use the streaming ID
+        if (!messageId) {
+          console.log('🔧 No assistant message found yet, using streaming ID');
+          messageId = currentStreamingMessageId || '_streaming_';
+          if (!currentStreamingMessageId) {
+            setCurrentStreamingMessageId('_streaming_');
+          }
+        }
+        
+        console.log('🔧 Associating data part with message ID:', messageId);
+        
+        setMessageDataParts(prev => ({
+          ...prev,
+          [messageId]: [
+            ...(prev[messageId] || []),
+            data
+          ]
+        }));
       }
     },
   });
@@ -221,14 +258,42 @@ export const ChatPage = ({ userName, chatId, isNewChat }: ChatProps) => {
             </div>
           ) : (
             <>
-              {messages.map((message, index) => (
-                <ChatMessage
-                  key={message.id || `message-${index}`}
-                  parts={message.parts ?? []}
-                  role={message.role}
-                  userName={userName}
-                />
-              ))}
+              {messages.map((message, index) => {
+                // Get data parts for this message (if any)
+                let dataParts = message.id ? messageDataParts[message.id] || [] : [];
+                
+                // For assistant messages, also check if we have data parts under streaming key
+                if (message.role === 'assistant' && dataParts.length === 0) {
+                  const streamingParts = messageDataParts['_streaming_'] || [];
+                  if (streamingParts.length > 0) {
+                    console.log('🔧 Using streaming data parts for assistant message:', message.id);
+                    dataParts = streamingParts;
+                    
+                    // Move streaming parts to actual message ID
+                    if (message.id) {
+                      setMessageDataParts(prev => {
+                        const { ['_streaming_']: _, ...rest } = prev;
+                        return {
+                          ...rest,
+                          [message.id]: streamingParts
+                        };
+                      });
+                    }
+                  }
+                }
+                
+                console.log('🎨 Rendering message', message.id, 'with', dataParts.length, 'data parts');
+                
+                return (
+                  <ChatMessage
+                    key={message.id || `message-${index}`}
+                    parts={message.parts ?? []}
+                    role={message.role}
+                    userName={userName}
+                    dataParts={dataParts}
+                  />
+                );
+              })}
             </>
           )}
         </StickToBottom.Content>

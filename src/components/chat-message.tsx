@@ -6,6 +6,7 @@ interface ChatMessageProps {
   parts: OurMessage['parts'];
   role: string;
   userName: string;
+  dataParts?: Array<Extract<OurMessage['parts'][number], { type: 'data-newAction' | 'data-sources' | 'data-clarification' | 'data-usage' }>>;
 }
 
 const components: Components = {
@@ -44,21 +45,31 @@ export const ChatMessage = ({
   parts,
   role,
   userName,
+  dataParts = [],
 }: ChatMessageProps) => {
-  console.log(`🎨 ChatMessage received:`, { role, partsCount: parts?.length, parts: parts?.map(p => ({ type: p.type, hasText: !!(p as any).text })) });
+  console.log(`🎨 ChatMessage received:`, { 
+    role, 
+    partsCount: parts?.length, 
+    dataPartsCount: dataParts.length,
+    dataParts: dataParts.map(p => ({ type: p.type }))
+  });
   const isAI = role === "assistant";
 
-  // Extract data parts
-  const actionParts = parts.filter((part): part is Extract<typeof part, { type: 'data-newAction' }> => 
+  // Use dataParts prop instead of extracting from parts
+  const actionParts = dataParts.filter((part): part is Extract<typeof part, { type: 'data-newAction' }> => 
     part.type === 'data-newAction'
   );
   
-  const sourcesParts = parts.filter((part): part is Extract<typeof part, { type: 'data-sources' }> => 
+  const sourcesParts = dataParts.filter((part): part is Extract<typeof part, { type: 'data-sources' }> => 
     part.type === 'data-sources'
+  );
+  
+  const clarificationParts = dataParts.filter((part): part is Extract<typeof part, { type: 'data-clarification' }> => 
+    part.type === 'data-clarification'
   );
 
   // Find the latest usage data part (if any)
-  const usagePart = isAI ? parts.findLast((part): part is Extract<typeof part, { type: 'data-usage' }> => 
+  const usagePart = isAI ? dataParts.findLast((part): part is Extract<typeof part, { type: 'data-usage' }> => 
     part.type === 'data-usage'
   ) : undefined;
 
@@ -73,8 +84,8 @@ export const ChatMessage = ({
         </p>
 
         {/* Show reasoning steps for AI messages with data parts */}
-        {isAI && (actionParts.length > 0 || sourcesParts.length > 0) && (
-          <ReasoningSteps parts={[...actionParts, ...sourcesParts]} />
+        {isAI && (actionParts.length > 0 || sourcesParts.length > 0 || clarificationParts.length > 0) && (
+          <ReasoningSteps parts={[...actionParts, ...sourcesParts, ...clarificationParts]} />
         )}
 
         <div className="prose prose-invert max-w-none">

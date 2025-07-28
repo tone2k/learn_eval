@@ -1,11 +1,11 @@
 {
-  "id": "3dd70888-c29e-4aa8-ad91-5a1ad7eed932",
+  "id": "2d254451-f3f1-4daa-9e15-34f012826792",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.ai-app-template_account": {
-      "name": "ai-app-template_account",
+    "public.fouroneone_account": {
+      "name": "fouroneone_account",
       "schema": "",
       "columns": {
         "user_id": {
@@ -93,10 +93,10 @@
         }
       },
       "foreignKeys": {
-        "ai-app-template_account_user_id_ai-app-template_user_id_fk": {
-          "name": "ai-app-template_account_user_id_ai-app-template_user_id_fk",
-          "tableFrom": "ai-app-template_account",
-          "tableTo": "ai-app-template_user",
+        "fouroneone_account_user_id_fouroneone_user_id_fk": {
+          "name": "fouroneone_account_user_id_fouroneone_user_id_fk",
+          "tableFrom": "fouroneone_account",
+          "tableTo": "fouroneone_user",
           "columnsFrom": [
             "user_id"
           ],
@@ -108,8 +108,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "ai-app-template_account_provider_provider_account_id_pk": {
-          "name": "ai-app-template_account_provider_provider_account_id_pk",
+        "fouroneone_account_provider_provider_account_id_pk": {
+          "name": "fouroneone_account_provider_provider_account_id_pk",
           "columns": [
             "provider",
             "provider_account_id"
@@ -118,8 +118,8 @@
       },
       "uniqueConstraints": {}
     },
-    "public.ai-app-template_chat": {
-      "name": "ai-app-template_chat",
+    "public.fouroneone_chat": {
+      "name": "fouroneone_chat",
       "schema": "",
       "columns": {
         "id": {
@@ -130,7 +130,7 @@
         },
         "title": {
           "name": "title",
-          "type": "varchar(255)",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": true
         },
@@ -151,7 +151,7 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "CURRENT_TIMESTAMP"
         }
       },
@@ -173,10 +173,10 @@
         }
       },
       "foreignKeys": {
-        "ai-app-template_chat_user_id_ai-app-template_user_id_fk": {
-          "name": "ai-app-template_chat_user_id_ai-app-template_user_id_fk",
-          "tableFrom": "ai-app-template_chat",
-          "tableTo": "ai-app-template_user",
+        "fouroneone_chat_user_id_fouroneone_user_id_fk": {
+          "name": "fouroneone_chat_user_id_fouroneone_user_id_fk",
+          "tableFrom": "fouroneone_chat",
+          "tableTo": "fouroneone_user",
           "columnsFrom": [
             "user_id"
           ],
@@ -190,8 +190,8 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "public.ai-app-template_message": {
-      "name": "ai-app-template_message",
+    "public.fouroneone_message": {
+      "name": "fouroneone_message",
       "schema": "",
       "columns": {
         "id": {
@@ -200,21 +200,15 @@
           "primaryKey": true,
           "notNull": true
         },
-        "order": {
-          "name": "order",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true
-        },
         "chat_id": {
           "name": "chat_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
-        "content": {
-          "name": "content",
-          "type": "json",
+        "role": {
+          "name": "role",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
@@ -222,11 +216,17 @@
           "name": "parts",
           "type": "json",
           "primaryKey": false,
+          "notNull": true
+        },
+        "annotations": {
+          "name": "annotations",
+          "type": "json",
+          "primaryKey": false,
           "notNull": false
         },
-        "role": {
-          "name": "role",
-          "type": "varchar(50)",
+        "order": {
+          "name": "order",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -253,13 +253,28 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "message_order_idx": {
+          "name": "message_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "ai-app-template_message_chat_id_ai-app-template_chat_id_fk": {
-          "name": "ai-app-template_message_chat_id_ai-app-template_chat_id_fk",
-          "tableFrom": "ai-app-template_message",
-          "tableTo": "ai-app-template_chat",
+        "fouroneone_message_chat_id_fouroneone_chat_id_fk": {
+          "name": "fouroneone_message_chat_id_fouroneone_chat_id_fk",
+          "tableFrom": "fouroneone_message",
+          "tableTo": "fouroneone_chat",
           "columnsFrom": [
             "chat_id"
           ],
@@ -273,100 +288,8 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "public.ai-app-template_request": {
-      "name": "ai-app-template_request",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(255)",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prompt_tokens": {
-          "name": "prompt_tokens",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "completion_tokens": {
-          "name": "completion_tokens",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
-        }
-      },
-      "indexes": {
-        "request_user_id_idx": {
-          "name": "request_user_id_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "request_user_time_idx": {
-          "name": "request_user_time_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "ai-app-template_request_user_id_ai-app-template_user_id_fk": {
-          "name": "ai-app-template_request_user_id_ai-app-template_user_id_fk",
-          "tableFrom": "ai-app-template_request",
-          "tableTo": "ai-app-template_user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "public.ai-app-template_session": {
-      "name": "ai-app-template_session",
+    "public.fouroneone_session": {
+      "name": "fouroneone_session",
       "schema": "",
       "columns": {
         "session_token": {
@@ -406,10 +329,10 @@
         }
       },
       "foreignKeys": {
-        "ai-app-template_session_user_id_ai-app-template_user_id_fk": {
-          "name": "ai-app-template_session_user_id_ai-app-template_user_id_fk",
-          "tableFrom": "ai-app-template_session",
-          "tableTo": "ai-app-template_user",
+        "fouroneone_session_user_id_fouroneone_user_id_fk": {
+          "name": "fouroneone_session_user_id_fouroneone_user_id_fk",
+          "tableFrom": "fouroneone_session",
+          "tableTo": "fouroneone_user",
           "columnsFrom": [
             "user_id"
           ],
@@ -423,8 +346,8 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "public.ai-app-template_user": {
-      "name": "ai-app-template_user",
+    "public.fouroneone_user": {
+      "name": "fouroneone_user",
       "schema": "",
       "columns": {
         "id": {
@@ -471,8 +394,8 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "public.ai-app-template_verification_token": {
-      "name": "ai-app-template_verification_token",
+    "public.fouroneone_verification_token": {
+      "name": "fouroneone_verification_token",
       "schema": "",
       "columns": {
         "identifier": {
@@ -497,8 +420,8 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "ai-app-template_verification_token_identifier_token_pk": {
-          "name": "ai-app-template_verification_token_identifier_token_pk",
+        "fouroneone_verification_token_identifier_token_pk": {
+          "name": "fouroneone_verification_token_identifier_token_pk",
           "columns": [
             "identifier",
             "token"

@@ -74,7 +74,7 @@ const Sources = ({ sources }: { sources: SearchSource[] }) => {
 export const ReasoningSteps = ({
   parts,
 }: {
-  parts: Array<Extract<OurMessage['parts'][number], { type: 'data-newAction' | 'data-sources' }>>;
+  parts: Array<Extract<OurMessage['parts'][number], { type: 'data-newAction' | 'data-sources' | 'data-clarification' }>>;
 }) => {
   const [openStep, setOpenStep] = useState<number | null>(null);
 
@@ -104,7 +104,11 @@ export const ReasoningSteps = ({
                 >
                   {index + 1}
                 </span>
-{part.type === "data-newAction" ? part.data.title : "Sources"}
+{part.type === "data-newAction" 
+                  ? part.data.title 
+                  : part.type === "data-sources" 
+                    ? "Sources" 
+                    : "Clarification"}
               </button>
               <div className={`${isOpen ? "mt-1" : "hidden"}`}>
                 {isOpen && (
@@ -131,6 +135,15 @@ export const ReasoningSteps = ({
                       </>
                     ) : part.type === "data-sources" ? (
                       <Sources sources={part.data} />
+                    ) : part.type === "data-clarification" ? (
+                      <div className="text-sm text-gray-400">
+                        <div className="mb-2 italic">
+                          <Markdown>{part.data.reasoning}</Markdown>
+                        </div>
+                        <div className="font-medium text-orange-400">
+                          I need more information to help you effectively.
+                        </div>
+                      </div>
                     ) : null}
                   </div>
                 )}

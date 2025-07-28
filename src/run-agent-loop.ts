@@ -205,6 +205,19 @@ export async function runAgentLoop(
   if (clarificationResult.needsClarification) {
     console.log("🔍 Question needs clarification:", clarificationResult.reason);
     
+    // Send clarification step to the UI
+    if (writeMessagePart) {
+      await writeMessagePart({
+        type: "data-clarification",
+        data: {
+          type: "clarification",
+          title: "Need clarification",
+          reasoning: clarificationResult.reason || "The question needs more context to provide an accurate answer.",
+          question: "Could you provide more details about your question?",
+        },
+      });
+    }
+    
     // Return a clarification request as a streamText result
     const clarificationResponse = streamText({
       model: defaultModel,

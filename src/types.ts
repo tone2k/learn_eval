@@ -8,6 +8,7 @@ export type OurMessage = UIMessage<
     sources: SearchSource[];
     usage: { totalTokens: number };
     newChatCreated: { chatId: string };
+    clarification: ClarificationAction;
   }
 >;
 
@@ -89,6 +90,13 @@ export interface AnswerAction {
 }
 
 export type Action = ContinueAction | AnswerAction;
+
+export interface ClarificationAction {
+  type: "clarification";
+  title: string;
+  reasoning: string;
+  question: string;
+}
 
 // URL Summarization types
 export interface SummarizeURLInput {
