@@ -240,12 +240,14 @@ export async function streamFromDeepSearch(opts: {
   const ctx = new SystemContext(opts.messages, opts.userLocation);
   
   // Run the agent loop with the full conversation history
+  console.log("🔄 streamFromDeepSearch calling runAgentLoop");
   const result = await runAgentLoop(opts.messages, {
     langfuseTraceId,
     writeMessagePart: opts.writeMessagePart,
     userLocation: opts.userLocation,
     systemContext: ctx,
   });
+  console.log("✅ streamFromDeepSearch received result from runAgentLoop");
   
   return {
     result,

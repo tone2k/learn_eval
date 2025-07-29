@@ -46,13 +46,6 @@ export const ChatMessage = ({
   userName,
 }: ChatMessageProps) => {
   const isAI = role === "assistant";
-  
-  console.log('💬 ChatMessage render:', { 
-    role, 
-    partsCount: parts.length, 
-    partTypes: parts.map(p => p.type),
-    timestamp: new Date().toISOString().split('T')[1]
-  });
 
   // Extract data parts directly from parts array
   const actionParts = parts.filter((part): part is Extract<typeof part, { type: 'data-newAction' }> => 
@@ -87,31 +80,46 @@ export const ChatMessage = ({
           <ReasoningSteps parts={[...actionParts, ...sourcesParts, ...clarificationParts]} />
         )}
 
-        <div className="prose prose-invert max-w-none">
-          {parts && parts.length > 0 ? (
-            // Render message parts for tool calls and other structured content
-            parts.map((part: any, index: number) => {
-              if (part.type === "text") {
-                return <Markdown key={index}>{part.text}</Markdown>;
-              } else if (part.type === "tool-invocation") {
-                return (
-                  <div key={index} className="mb-2 rounded bg-gray-700 p-2">
-                    <p className="text-sm text-gray-400">
-                      🔧 Using tool: {part.toolInvocation.toolName}
-                    </p>
-                    <pre className="mt-1 text-xs text-gray-500">
-                      {JSON.stringify(part.toolInvocation.args, null, 2)}
-                    </pre>
-                  </div>
-                );
-              }
-              return null;
-            })
-          ) : (
-            // Render empty state for messages without parts
-            <p className="text-gray-500">No content</p>
-          )}
-        </div>
+        {/* Only show main content if there are no clarification parts */}
+        {clarificationParts.length === 0 && (
+          <div className="prose prose-invert max-w-none">
+            {parts && parts.length > 0 ? (
+              // Render message parts for tool calls and other structured content
+              parts.map((part, index: number) => {
+                // Skip rendering data parts that are already shown in reasoning steps
+                if (part.type === "data-newAction" || 
+                    part.type === "data-sources" || 
+                    part.type === "data-clarification" ||
+                    part.type === "data-usage" ||
+                    part.type === "data-newChatCreated") {
+                  return null;
+                }
+                
+                if (part.type === "text") {
+                  return <Markdown key={index}>{part.text}</Markdown>;
+                } else if (part.type === "tool-invocation") {
+                  return (
+                    <div key={index} className="mb-2 rounded bg-gray-700 p-2">
+                      <p className="text-sm text-gray-400">
+                        🔧 Using tool: {part.toolInvocation.toolName}
+                      </p>
+                      <pre className="mt-1 text-xs text-gray-500">
+                        {JSON.stringify(part.toolInvocation.args, null, 2)}
+                      </pre>
+                    </div>
+                  );
+                }
+                
+                return null;
+              })
+            ) : (
+              // Only show empty state for messages without any parts
+              isAI && actionParts.length === 0 && sourcesParts.length === 0 && clarificationParts.length === 0 ? (
+                <p className="text-gray-500">No content</p>
+              ) : null
+            )}
+          </div>
+        )}
 
         {/* Show token usage for AI messages */}
         {isAI && usagePart && (

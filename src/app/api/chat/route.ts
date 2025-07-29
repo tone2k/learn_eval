@@ -274,6 +274,7 @@ export async function POST(req: Request) {
     });
 
     console.log("🔧 Starting deep search stream");
+    console.log("🚀 CHAT API CALLED - Starting new stream");
     
     // Create the UI message stream with type-safe data parts
     const stream = createUIMessageStream<OurMessage>({
@@ -301,10 +302,13 @@ export async function POST(req: Request) {
         });
 
         // Merge the final streaming result into our stream
+        console.log("🔀 About to merge result.toUIMessageStream()");
         await writer.merge(result.toUIMessageStream());
+        console.log("✅ Successfully merged result.toUIMessageStream()");
       },
       onFinish: async ({ messages }: { messages: OurMessage[] }) => {
         console.log("🏁 Stream finished, saving chat");
+        console.log("🏁 CHAT API COMPLETED - Stream ended");
         
         try {
           // Get the complete updated conversation

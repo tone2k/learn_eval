@@ -161,6 +161,7 @@ export async function runAgentLoop(
     systemContext?: SystemContext;
   }
 ): Promise<StreamTextResult<{}, string>> {
+  console.log("🚀 runAgentLoop STARTED - New execution");
   const { langfuseTraceId, writeMessagePart, userLocation, systemContext } = opts;
   // A persistent container for the state of our system
   const ctx = systemContext || new SystemContext(conversationMessages, userLocation);
@@ -205,32 +206,13 @@ export async function runAgentLoop(
   if (clarificationResult.needsClarification) {
     console.log("🔍 Question needs clarification:", clarificationResult.reason);
     
-    // Send clarification step to the UI
-    if (writeMessagePart) {
-      await writeMessagePart({
-        type: "data-clarification",
-        data: {
-          type: "clarification",
-          title: "Need clarification",
-          reasoning: clarificationResult.reason || "The question needs more context to provide an accurate answer.",
-          question: "Could you provide more details about your question?",
-        },
-      });
-    }
-    
-    // Return a clarification request as a streamText result
+    // Return a clarification response
     const clarificationResponse = streamText({
       model: defaultModel,
-      system: `You are a clarification agent. Your job is to ask the user for clarification on their question.`,
-      prompt: `Here is the message history:
+      system: `You are a clarification agent. Provide a helpful clarification request based on the identified issue.`,
+      prompt: `The user's question needs clarification for this reason: ${clarificationResult.reason}
 
-${ctx.getMessageHistory()}
-
-And here is why the question needs clarification:
-
-${clarificationResult.reason}
-
-Please reply to the user with a clarification request.`,
+Please provide a friendly clarification request that helps the user understand what additional information you need.`,
       experimental_telemetry: langfuseTraceId ? {
         isEnabled: true,
         functionId: "clarification-response",
@@ -300,9 +282,6 @@ Please reply to the user with a clarification request.`,
         });
       }
     }
-
-    // Increment step counter BEFORE executing the action to ensure proper counting
-    ctx.incrementStep();
     
     // We execute the action and update the state of our system
     if (nextAction.type === "continue") {
@@ -332,16 +311,21 @@ Please reply to the user with a clarification request.`,
       }
     } else if (nextAction.type === "answer") {
       console.log("🎯 Ready to answer the question");
+      console.log("🏁 runAgentLoop COMPLETED - Answer action");
       return answerQuestion(ctx, { 
         isFinal: false,
         langfuseTraceId,
       });
     }
+    
+    // Increment step counter AFTER executing the action to ensure proper counting
+    ctx.incrementStep();
   }
   
   // If we've taken 5 actions and still don't have an answer,
   // we ask the LLM to give its best attempt at an answer
   console.log("⏰ Reached maximum steps, providing final answer");
+  console.log("🏁 runAgentLoop COMPLETED - Final answer");
   return answerQuestion(ctx, { 
     isFinal: true, 
     langfuseTraceId,

@@ -1,11 +1,33 @@
 import Link from "next/link";
 import { auth } from "~/server/auth/index.ts";
-import { getChats } from "~/server/db/queries";
+import { getChats, getChat } from "~/server/db/queries";
 import { AppHeader } from "../components/app-header.tsx";
 import { AuthButton } from "../components/auth-button.tsx";
 import { ChatPage } from "./chat.tsx";
 import { NewChatButton } from "../components/new-chat-button.tsx";
 import { DeleteChatButton } from "../components/delete-chat-button.tsx";
+import type { OurMessage, DatabaseMessage } from "~/types";
+
+// Helper function to transform database message format to AI SDK format
+function transformDatabaseMessageToAISDK(msg: DatabaseMessage): OurMessage {
+  // In AI SDK v5, messages use parts instead of content
+  // If we have stored parts, use them; otherwise convert content to text part
+  let parts: Array<{ type: string; text?: string; [key: string]: unknown }> = [];
+  
+  if (msg.parts && Array.isArray(msg.parts)) {
+    parts = msg.parts;
+  } else if (msg.content) {
+    // Convert legacy content to text part
+    const contentText = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+    parts = [{ type: 'text', text: contentText }];
+  }
+
+  return {
+    id: msg.id,
+    role: msg.role as "user" | "assistant" | "system",
+    parts: parts as OurMessage['parts'],
+  };
+}
 
 export default async function HomePage({
   searchParams,
@@ -22,11 +44,20 @@ export default async function HomePage({
     ? await getChats(session.user.id) 
     : [];
 
-  // Use chatId from URL, null for new chats
+  // Use chatId from URL
   const chatIdFromUrl = id;
   const activeChatId = chatIdFromUrl; // Use the actual chatId from URL for highlighting
-  const chatId = chatIdFromUrl ?? null;
-  const isNewChat = !chatIdFromUrl;
+  
+  // Load initial messages for existing chats
+  let initialMessages: OurMessage[] = [];
+  if (chatIdFromUrl && isAuthenticated && session.user?.id) {
+    const existingChat = await getChat({ chatId: chatIdFromUrl, userId: session.user.id });
+    if (existingChat?.messages) {
+      initialMessages = existingChat.messages.map((msg) => 
+        transformDatabaseMessageToAISDK(msg as DatabaseMessage)
+      );
+    }
+  }
 
   return (
     <div className="flex h-screen bg-pink-50">
@@ -81,10 +112,11 @@ export default async function HomePage({
         </div>
       </div>
 
-      <ChatPage 
-        userName={userName} 
-        chatId={chatId}
-        isNewChat={isNewChat}
+      <ChatPage
+        userName={userName}
+        isAuthenticated={isAuthenticated}
+        chatId={chatIdFromUrl}
+        initialMessages={initialMessages}
       />
     </div>
   );
