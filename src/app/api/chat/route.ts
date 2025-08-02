@@ -39,7 +39,11 @@ function transformDatabaseMessageToAISDK(msg: DatabaseMessage, index: number): O
   let parts: Array<{ type: string; text?: string; [key: string]: unknown }> = [];
   
   if (msg.parts && Array.isArray(msg.parts)) {
-    parts = msg.parts;
+    // Filter out data parts when loading from database to prevent duplicate rendering
+    // Data parts should only be transient for real-time UI updates during streaming
+    parts = msg.parts.filter(part => 
+      !part.type?.startsWith('data-') // Remove all data-* parts
+    );
   } else if (msg.content) {
     // Convert legacy content to text part
     const contentText = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
@@ -310,6 +314,15 @@ export async function POST(req: Request) {
           // Get the complete updated conversation
           const updatedMessages = [...conversationMessages, ...messages];
 
+          // Filter out data parts from message parts before saving to prevent duplicates
+          // Data parts should only be transient for real-time UI updates, not persisted
+          const messagesWithoutDataParts = updatedMessages.map(message => ({
+            ...message,
+            parts: message.parts?.filter(part => 
+              !part.type?.startsWith('data-') // Remove all data-* parts
+            ) || []
+          }));
+
           // Await the title generation if it was started
           const generatedTitle = titlePromise ? await titlePromise : "";
 
@@ -317,7 +330,7 @@ export async function POST(req: Request) {
           await upsertChat({
             userId: session.user.id,
             chatId,
-            messages: updatedMessages,
+            messages: messagesWithoutDataParts,
             ...(generatedTitle ? { title: generatedTitle } : {}),
           });
 
