@@ -1,11 +1,11 @@
-import { streamText, type UIMessage, type StreamTextResult, type UIMessageStreamWriter } from "ai";
+import { streamText, type StreamTextResult, type UIMessage, type UIMessageStreamWriter } from "ai";
 import { randomUUID } from "crypto";
 import { answerQuestion } from "~/answer-question";
+import { checkIfQuestionNeedsClarification } from "~/clarification";
 import { getNextAction } from "~/deep-search";
 import { env } from "~/env";
 import { addFaviconsToSources } from "~/favicon-utils";
 import { checkIsSafe } from "~/guardrails";
-import { checkIfQuestionNeedsClarification } from "~/clarification";
 import { defaultModel } from "~/models";
 import { rewriteQuery } from "~/query-rewriter";
 import { searchSerper } from "~/serper";
@@ -33,7 +33,6 @@ export async function searchAndScrape(
   langfuseTraceId?: string,
   writeMessagePart?: UIMessageStreamWriter<OurMessage>['write']
 ): Promise<void> {
-  console.log("🔍 Searching and scraping for:", query);
   
   try {
     // First, search the web
@@ -42,14 +41,10 @@ export async function searchAndScrape(
       undefined
     );
     
-    console.log("✅ Search completed, found", searchResults.organic.length, "results");
-    
     // Get the most relevant URLs to scrape (up to MAX_PAGES_TO_SCRAPE)
     const urlsToScrape = searchResults.organic
       .slice(0, env.MAX_PAGES_TO_SCRAPE)
       .map(result => result.link);
-    
-    console.log("🌐 Scraping URLs:", urlsToScrape);
     
     // Scrape the URLs
     const scrapeResults = await cachedBulkCrawlWebsites({ urls: urlsToScrape });
@@ -61,14 +56,12 @@ export async function searchAndScrape(
       scrapeResults.results.forEach(r => {
         scrapeContentMap.set(r.url, r.result.data);
       });
-      console.log("✅ Scraping completed successfully");
     } else {
       // Handle partial failures
       scrapeResults.results.forEach(r => {
         const content = r.result.success ? r.result.data : `Error: ${(r.result as { error: string }).error}`;
         scrapeContentMap.set(r.url, content);
       });
-      console.log("⚠️ Scraping completed with some errors");
     }
     
     // Prepare inputs for summarization
@@ -86,8 +79,6 @@ export async function searchAndScrape(
         },
         query,
       }));
-    
-    console.log("📝 Starting URL summarization for", summarizationInputs.length, "URLs");
     
     // Display sources to the user before starting summarization
     if (writeMessagePart) {
@@ -114,8 +105,6 @@ export async function searchAndScrape(
       (description, usage) => context.reportUsage(description, usage)
     );
     
-    console.log("✅ URL summarization completed");
-    
     // Create a map of URL to summary
     const summaryMap = new Map<string, string>();
     summaryResults.forEach(result => {
@@ -137,7 +126,6 @@ export async function searchAndScrape(
       results: combinedResults,
     });
     
-    console.log("✅ Combined search, scrape, and summarization completed");
   } catch (error) {
     console.error("❌ Search, scrape, and summarization error:", error);
     
@@ -161,13 +149,11 @@ export async function runAgentLoop(
     systemContext?: SystemContext;
   }
 ): Promise<StreamTextResult<{}, string>> {
-  console.log("🚀 runAgentLoop STARTED - New execution");
   const { langfuseTraceId, writeMessagePart, userLocation, systemContext } = opts;
   // A persistent container for the state of our system
   const ctx = systemContext || new SystemContext(conversationMessages, userLocation);
   
   // Guardrail check before entering the main loop
-  console.log("🛡️ Running safety check...");
   const guardrailResult = await checkIsSafe(ctx, langfuseTraceId);
   
   if (guardrailResult.classification === "refuse") {
@@ -197,10 +183,7 @@ export async function runAgentLoop(
     return refusalResult;
   }
   
-  console.log("✅ Safety check passed");
-  
   // Clarification check before entering the main loop
-  console.log("❓ Checking if question needs clarification...");
   const clarificationResult = await checkIfQuestionNeedsClarification(ctx, langfuseTraceId);
   
   if (clarificationResult.needsClarification) {
@@ -232,16 +215,12 @@ Please provide a friendly clarification request that helps the user understand w
     return clarificationResponse;
   }
   
-  console.log("✅ Question is clear, proceeding with search");
-  
   // Get the latest user message for logging purposes
   const latestUserMessage = ctx.getLatestUserMessage();
-  console.log("🤖 Starting agent loop for query:", latestUserMessage);
   
   // A loop that continues until we have an answer or we've taken 5 actions
   while (!ctx.shouldStop()) {
     const currentStep = ctx.getCurrentStep() + 1; // 1-indexed for display
-    console.log(`🔄 Step ${currentStep}/5`);
     
     // Safety check to prevent infinite loops
     if (currentStep > 5) {
@@ -251,7 +230,6 @@ Please provide a friendly clarification request that helps the user understand w
     
     // We choose the next action based on the state of our system
     const nextAction: Action = await getNextAction(ctx, langfuseTraceId);
-    console.log("🎯 Next action:", nextAction);
     
     // Store the feedback in the context
     if (nextAction.feedback) {
@@ -292,8 +270,6 @@ Please provide a friendly clarification request that helps the user understand w
       
       // Use the query rewriter to optimize the search query based on feedback
       const optimizedQuery = await rewriteQuery(nextAction.query, ctx, langfuseTraceId);
-      console.log("🔄 Original query:", nextAction.query);
-      console.log("✨ Optimized query:", optimizedQuery);
       
       await searchAndScrape(ctx, optimizedQuery, langfuseTraceId, writeMessagePart);
       
@@ -310,8 +286,6 @@ Please provide a friendly clarification request that helps the user understand w
         }
       }
     } else if (nextAction.type === "answer") {
-      console.log("🎯 Ready to answer the question");
-      console.log("🏁 runAgentLoop COMPLETED - Answer action");
       return answerQuestion(ctx, { 
         isFinal: false,
         langfuseTraceId,
@@ -324,8 +298,6 @@ Please provide a friendly clarification request that helps the user understand w
   
   // If we've taken 5 actions and still don't have an answer,
   // we ask the LLM to give its best attempt at an answer
-  console.log("⏰ Reached maximum steps, providing final answer");
-  console.log("🏁 runAgentLoop COMPLETED - Final answer");
   return answerQuestion(ctx, { 
     isFinal: true, 
     langfuseTraceId,

@@ -7,7 +7,7 @@ import { env } from "~/env";
 import { auth } from "~/server/auth";
 import { generateChatTitle, getChat, upsertChat } from "~/server/db/queries";
 import { checkRateLimit, recordRateLimit, type RateLimitConfig } from "~/server/rate-limit";
-import type { OurMessage, UserLocation, DatabaseMessage } from "~/types";
+import type { DatabaseMessage, OurMessage, UserLocation } from "~/types";
 import { messageToString } from "~/utils";
 
 const langfuse = new Langfuse({

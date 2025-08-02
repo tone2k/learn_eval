@@ -1,4 +1,4 @@
-import { smoothStream, streamText, type StreamTextResult } from "ai";
+import { smoothStream, streamText } from "ai";
 import { markdownJoinerTransform } from "~/markdown-transform";
 import { defaultModel } from "~/models";
 import type { SystemContext } from "~/system-context";

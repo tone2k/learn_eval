@@ -73,7 +73,7 @@ export const ChatPage = ({
           {messages.map((message, index) => {
             return (
               <ChatMessage
-                key={index}
+                key={message.id || `message-${index}`}
                 parts={message.parts ?? []}
                 role={message.role}
                 userName={userName}
