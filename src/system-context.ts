@@ -1,5 +1,5 @@
 import type { UIMessage } from "ai";
-import type { UserLocation, UsageEntry } from "~/types";
+import type { UsageEntry, UserLocation } from "~/types";
 import { messageToString } from "~/utils";
 
 type SearchResult = {
@@ -67,10 +67,19 @@ export class SystemContext {
   }
 
   reportSearch(search: SearchHistoryEntry) {
+    console.log("📝 SystemContext.reportSearch:", {
+      query: search.query,
+      resultsCount: search.results.length,
+      hasSummaries: search.results.some(r => r.summary && r.summary !== "Failed to generate summary")
+    });
     this.searchHistory.push(search);
   }
 
   getSearchHistory(): string {
+    console.log("📖 SystemContext.getSearchHistory:", {
+      entriesCount: this.searchHistory.length,
+      totalResults: this.searchHistory.reduce((sum, entry) => sum + entry.results.length, 0)
+    });
     return this.searchHistory
       .map((search) =>
         [

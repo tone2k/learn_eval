@@ -60,6 +60,10 @@ export const ChatMessage = ({
     part.type === 'data-clarification'
   );
 
+  const textParts = parts.filter((part): part is Extract<typeof part, { type: 'data-text' }> => 
+    part.type === 'data-text'
+  );
+
   // Find the latest usage data part (if any)
   const usagePart = isAI ? parts.findLast((part): part is Extract<typeof part, { type: 'data-usage' }> => 
     part.type === 'data-usage'
@@ -80,8 +84,17 @@ export const ChatMessage = ({
           <ReasoningSteps parts={[...actionParts, ...sourcesParts, ...clarificationParts]} />
         )}
 
-        {/* Only show main content if there are no clarification parts */}
-        {clarificationParts.length === 0 && (
+        {/* Show text content from data-text parts */}
+        {textParts.length > 0 && (
+          <div className="prose prose-invert max-w-none">
+            {textParts.map((part, index) => (
+              <Markdown key={index}>{part.data.content}</Markdown>
+            ))}
+          </div>
+        )}
+
+        {/* Only show main content if there are no clarification parts and no text parts */}
+        {clarificationParts.length === 0 && textParts.length === 0 && (
           <div className="prose prose-invert max-w-none">
             {parts && parts.length > 0 ? (
               // Render message parts for tool calls and other structured content
@@ -91,7 +104,8 @@ export const ChatMessage = ({
                     part.type === "data-sources" || 
                     part.type === "data-clarification" ||
                     part.type === "data-usage" ||
-                    part.type === "data-newChatCreated") {
+                    part.type === "data-newChatCreated" ||
+                    part.type === "data-text") {
                   return null;
                 }
                 

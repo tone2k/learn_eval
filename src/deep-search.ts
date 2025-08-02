@@ -1,8 +1,8 @@
 import {
   generateObject,
-  type UIMessage,
   type StreamTextResult,
   type TelemetrySettings,
+  type UIMessage,
   type UIMessageStreamWriter,
 } from "ai";
 import { z } from "zod";
@@ -58,6 +58,12 @@ export const getNextAction = async (
     day: 'numeric' 
   });
 
+  const searchHistory = context.getSearchHistory();
+  console.log("🔍 getNextAction - Search History:", {
+    length: searchHistory.length,
+    content: searchHistory.substring(0, 500) + (searchHistory.length > 500 ? "..." : "")
+  });
+
   const result = await generateObject({
     model: defaultModel,
     schema: actionSchema,
@@ -104,6 +110,12 @@ EVALUATION CRITERIA:
 - Specificity: Do we have specific details, not just general information?
 - Coverage: Have we explored different aspects of the question?
 
+IMPORTANT DECISION GUIDELINES:
+- If you have found relevant information that answers the user's question, even if not perfectly specific, choose "answer"
+- If recent searches are returning 0 results, consider whether the information you already have is sufficient
+- Don't keep searching for overly specific details if the general answer is available
+- If you've tried multiple search variations and are still not finding results, it's better to answer with what you have
+
 PREVIOUS FEEDBACK:
 ${context.getLastFeedback() || "No previous feedback available."}
 
@@ -115,7 +127,7 @@ MOST RECENT USER MESSAGE: "${context.getLatestUserMessage()}"
 FIRST USER QUESTION: "${context.getInitialQuestion()}"
 
 SEARCH HISTORY AND SUMMARIES:
-${context.getSearchHistory()}
+${searchHistory}
 
 Based on your evaluation, determine the next action. When providing feedback (only required when type is 'continue'), include specific details about:
 - What information is still missing
@@ -124,6 +136,12 @@ Based on your evaluation, determine the next action. When providing feedback (on
 - Any patterns or issues noticed in previous searches
 
 This feedback will be used to improve subsequent search queries.`,
+  });
+
+  console.log("🎯 getNextAction result:", {
+    type: result.object.type,
+    title: result.object.title,
+    reasoning: result.object.reasoning?.substring(0, 200) + "..."
   });
 
   // Report usage to context
@@ -230,7 +248,7 @@ export async function streamFromDeepSearch(opts: {
   writeMessagePart?: UIMessageStreamWriter<OurMessage>['write'];
   userLocation?: UserLocation;
 }): Promise<{
-  result: StreamTextResult<{}, string>;
+  result: StreamTextResult<{}, string> | null;
   getContext: () => SystemContext;
 }> {
   // Extract langfuseTraceId from telemetry metadata if available
@@ -250,7 +268,7 @@ export async function streamFromDeepSearch(opts: {
   console.log("✅ streamFromDeepSearch received result from runAgentLoop");
   
   return {
-    result,
+    result: result || null, // Return the actual StreamTextResult or null if no answer was generated
     getContext: () => ctx,
   };
 };
@@ -263,6 +281,10 @@ export async function askDeepSearch(messages: UIMessage[], userLocation?: UserLo
     },
     userLocation,
   });
+
+  if (!result) {
+    return "No answer was generated.";
+  }
 
   // Consume the stream - without this,
   // the stream will never finish

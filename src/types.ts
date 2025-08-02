@@ -9,6 +9,7 @@ export type OurMessage = UIMessage<
     usage: { totalTokens: number };
     newChatCreated: { chatId: string };
     clarification: ClarificationAction;
+    text: { content: string };
   }
 >;
 

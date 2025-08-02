@@ -41,6 +41,33 @@ export async function searchAndScrape(
       undefined
     );
     
+    console.log("🔍 searchAndScrape - Search results:", {
+      query,
+      resultsCount: searchResults.organic.length,
+      results: searchResults.organic.map(r => ({ title: r.title, url: r.link }))
+    });
+    
+    // If no search results, report empty results and return early
+    if (searchResults.organic.length === 0) {
+      console.log("⚠️ No search results found for query:", query);
+      
+      // Display empty sources to the user
+      if (writeMessagePart) {
+        await writeMessagePart({
+          type: "data-sources",
+          data: [],
+        });
+      }
+      
+      // Report empty search results
+      context.reportSearch({
+        query,
+        results: [],
+      });
+      
+      return;
+    }
+    
     // Get the most relevant URLs to scrape (up to MAX_PAGES_TO_SCRAPE)
     const urlsToScrape = searchResults.organic
       .slice(0, env.MAX_PAGES_TO_SCRAPE)
@@ -126,6 +153,12 @@ export async function searchAndScrape(
       results: combinedResults,
     });
     
+    console.log("📊 searchAndScrape completed:", {
+      query,
+      resultsCount: combinedResults.length,
+      hasSummaries: combinedResults.some(r => r.summary && r.summary !== "Failed to generate summary")
+    });
+    
   } catch (error) {
     console.error("❌ Search, scrape, and summarization error:", error);
     
@@ -148,7 +181,7 @@ export async function runAgentLoop(
     userLocation?: UserLocation;
     systemContext?: SystemContext;
   }
-): Promise<StreamTextResult<{}, string>> {
+): Promise<StreamTextResult<{}, string> | null> {
   const { langfuseTraceId, writeMessagePart, userLocation, systemContext } = opts;
   // A persistent container for the state of our system
   const ctx = systemContext || new SystemContext(conversationMessages, userLocation);
@@ -286,6 +319,9 @@ Please provide a friendly clarification request that helps the user understand w
         }
       }
     } else if (nextAction.type === "answer") {
+      console.log("🎯 Ready to answer the question");
+      
+      // Return the streaming answer directly instead of trying to consume and rewrite it
       return answerQuestion(ctx, { 
         isFinal: false,
         langfuseTraceId,
@@ -298,6 +334,9 @@ Please provide a friendly clarification request that helps the user understand w
   
   // If we've taken 5 actions and still don't have an answer,
   // we ask the LLM to give its best attempt at an answer
+  console.log("⏰ Reached maximum steps, providing final answer");
+  
+  // Return the streaming final answer directly
   return answerQuestion(ctx, { 
     isFinal: true, 
     langfuseTraceId,

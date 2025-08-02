@@ -55,6 +55,12 @@ Based on the evaluator's feedback about what information is missing and the sear
 4. Avoid repeating searches that have already been done
 5. Focus on filling the identified information gaps
 
+IMPORTANT GUIDELINES:
+- Don't make queries overly specific if previous searches returned 0 results
+- Use broader, more general terms if specific searches are failing
+- Avoid adding too many qualifiers that might make the search too narrow
+- If the feedback asks for very specific details, try a more general approach first
+
 Return ONLY the optimized search query, nothing else.`,
   });
 

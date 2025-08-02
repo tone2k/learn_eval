@@ -287,7 +287,6 @@ export async function POST(req: Request) {
           });
         }
 
-
         const { result } = await streamFromDeepSearch({
           messages: conversationMessages,
           telemetry: {
@@ -301,10 +300,57 @@ export async function POST(req: Request) {
           userLocation,
         });
 
-        // Merge the final streaming result into our stream
-        console.log("🔀 About to merge result.toUIMessageStream()");
-        await writer.merge(result.toUIMessageStream());
-        console.log("✅ Successfully merged result.toUIMessageStream()");
+        // If we got a final answer result, we need to stream its content
+        if (result) {
+          console.log("🎯 Final answer result received, streaming text content");
+          
+          // Stream the text content from the result using the proper delta format
+          try {
+            const messageId = crypto.randomUUID();
+            
+            // Send text-start event
+            await writer.write({
+              type: "text-start",
+              id: messageId,
+            });
+            
+            // Stream text deltas from the result
+            const textStream = result.textStream;
+            for await (const textChunk of textStream) {
+              await writer.write({
+                type: "text-delta",
+                id: messageId,
+                delta: textChunk,
+              });
+            }
+            
+            // Send text-end event
+            await writer.write({
+              type: "text-end",
+              id: messageId,
+            });
+          } catch (error) {
+            console.error("❌ Error streaming final answer:", error);
+            // Fallback to getting complete text as a single delta
+            const finalText = await result.text;
+            if (finalText) {
+              const messageId = crypto.randomUUID();
+              await writer.write({
+                type: "text-start",
+                id: messageId,
+              });
+              await writer.write({
+                type: "text-delta", 
+                id: messageId,
+                delta: finalText,
+              });
+              await writer.write({
+                type: "text-end",
+                id: messageId,
+              });
+            }
+          }
+        }
       },
       onFinish: async ({ messages }: { messages: OurMessage[] }) => {
         console.log("🏁 Stream finished, saving chat");
