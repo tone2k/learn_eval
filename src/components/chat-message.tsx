@@ -20,13 +20,13 @@ const components: Components = {
     </code>
   ),
   pre: ({ children }) => (
-    <pre className="mb-4 overflow-x-auto rounded-lg bg-gray-700 p-4">
+    <pre className="mb-4 overflow-x-auto rounded-lg bg-gray-100 border border-gray-200 p-4">
       {children}
     </pre>
   ),
   a: ({ children, ...props }) => (
     <a
-      className="text-blue-400 underline"
+      className="text-pink-600 underline hover:text-pink-700"
       target="_blank"
       rel="noopener noreferrer"
       {...props}
@@ -72,10 +72,12 @@ export const ChatMessage = ({
   return (
     <div className="mb-6">
       <div
-        className={`rounded-lg p-4 ${isAI ? "bg-gray-800 text-gray-300" : "bg-gray-900 text-gray-300"
-          }`}
+        className={`rounded-lg p-4 border ${isAI 
+          ? "bg-white border-pink-200 text-gray-800" 
+          : "bg-pink-50 border-pink-300 text-gray-900"
+        }`}
       >
-        <p className="mb-2 text-sm font-semibold text-gray-400">
+        <p className="mb-2 text-sm font-semibold text-gray-500">
           {isAI ? "AI" : userName}
         </p>
 
@@ -86,7 +88,7 @@ export const ChatMessage = ({
 
         {/* Show text content from data-text parts */}
         {textParts.length > 0 && (
-          <div className="prose prose-invert max-w-none">
+          <div className="prose max-w-none">
             {textParts.map((part, index) => (
               <Markdown key={index}>{part.data.content}</Markdown>
             ))}
@@ -95,7 +97,7 @@ export const ChatMessage = ({
 
         {/* Only show main content if there are no clarification parts and no text parts */}
         {clarificationParts.length === 0 && textParts.length === 0 && (
-          <div className="prose prose-invert max-w-none">
+          <div className="prose max-w-none">
             {parts && parts.length > 0 ? (
               // Render message parts for tool calls and other structured content
               parts.map((part, index: number) => {
@@ -113,8 +115,8 @@ export const ChatMessage = ({
                   return <Markdown key={index}>{part.text}</Markdown>;
                 } else if (part.type === "tool-invocation") {
                   return (
-                    <div key={index} className="mb-2 rounded bg-gray-700 p-2">
-                      <p className="text-sm text-gray-400">
+                    <div key={index} className="mb-2 rounded bg-pink-100 border border-pink-200 p-2">
+                      <p className="text-sm text-gray-600">
                         🔧 Using tool: {part.toolInvocation.toolName}
                       </p>
                       <pre className="mt-1 text-xs text-gray-500">
@@ -129,7 +131,7 @@ export const ChatMessage = ({
             ) : (
               // Only show empty state for messages without any parts
               isAI && actionParts.length === 0 && sourcesParts.length === 0 && clarificationParts.length === 0 ? (
-                <p className="text-gray-500">No content</p>
+                <p className="text-gray-600">No content</p>
               ) : null
             )}
           </div>
@@ -137,7 +139,7 @@ export const ChatMessage = ({
 
         {/* Show token usage for AI messages */}
         {isAI && usagePart && (
-          <div className="mb-2 text-xs text-gray-400">
+          <div className="mb-2 text-xs text-gray-500">
             Tokens used: {usagePart.data.totalTokens.toLocaleString()}
           </div>
         )}

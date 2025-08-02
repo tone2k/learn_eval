@@ -41,10 +41,20 @@ export function isNewChatCreated(
 
 // AI SDK v5 utility: Convert UIMessage to string by extracting text parts
 export function messageToString(message: UIMessage): string {
-  return message.parts
-    .filter((part): part is { type: "text"; text: string } => part.type === "text")
-    .map((part) => part.text)
-    .join(" ");
+  // Handle legacy format with content property (string)
+  if (typeof (message as any).content === "string") {
+    return (message as any).content;
+  }
+  
+  // Handle new format with parts array
+  if (message.parts) {
+    return message.parts
+      .filter((part): part is { type: "text"; text: string } => part.type === "text")
+      .map((part) => part.text)
+      .join(" ");
+  }
+  
+  return "";
 }
 
  

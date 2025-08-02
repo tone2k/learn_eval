@@ -1,20 +1,23 @@
-# DeepSearch - AI Research Agent
+# 411 - Your Friend Who Always Has The Tea ☕
 
-An AI research assistant that performs multi-step web searches and synthesizes comprehensive answers to complex questions. This project demonstrates advanced Applied AI Engineering patterns including multi-agent orchestration, LLM evaluation frameworks, and enterprise-grade AI system design.
+You know that friend who somehow always knows everything about everything? The one you text when you need the REAL story on something? That's 411 - except it's powered by AI and actually does the deep digging to get you the goods. This project showcases advanced AI engineering through the lens of building the ultimate information-gathering bestie.
 
-## Overview
+## What's 411?
 
-DeepSearch goes beyond simple search by implementing sophisticated AI agent workflows. It understands questions, performs iterative research, analyzes content from multiple sources, and delivers well-researched, comprehensive answers with proper citations.
+411 is like having that one friend who's basically an investigative journalist but actually fun to talk to. It doesn't just Google stuff and call it a day - it goes DEEP, checking multiple sources, following leads, and coming back with the full story. Think of it as your personal information detective who explains everything like you're catching up over coffee.
 
-### Key Features
+![411 Interface](411_screenshot.png)
+*411 in action - showing real-time research progress as it digs up information about Taylor Swift's dating life*
 
-- **Multi-Agent Research**: Implements sophisticated agent loops with state management and decision trees
-- **Intelligent Content Analysis**: AI-powered web scraping and content summarization
-- **Advanced LLM Integration**: Structured generation, tool calling, and streaming responses
-- **Production-Ready Guardrails**: Content moderation, rate limiting, and safety checks
-- **Comprehensive Evaluation**: LLM-as-a-judge evaluation framework with custom metrics
-- **Enterprise Observability**: OpenTelemetry + Langfuse integration for AI tracing
-- **Real-Time Streaming**: Live progress updates during research process
+### Why 411 Slaps Different
+
+- **Actually Does The Homework**: Multi-step research that digs deeper than surface-level answers
+- **Knows How To Read The Room**: Smart content analysis that understands context and nuance
+- **Explains It Like A Human**: No robot speak - just clear explanations with actual personality
+- **Keeps It Safe**: Built-in guardrails so it stays helpful, not harmful
+- **Shows Its Work**: Full source citations so you know it's not making stuff up
+- **Gets Better Over Time**: Comprehensive evaluation system that ensures quality
+- **Real-Time Updates**: Watch it work in real-time as it gathers the tea
 
 ## Tech Stack
 
@@ -23,7 +26,10 @@ DeepSearch goes beyond simple search by implementing sophisticated AI agent work
 - **Google AI SDK (Gemini)** - Advanced LLM integration with structured generation
 - **Zod** - Type-safe schema validation for AI outputs
 - **OpenTelemetry + Langfuse** - Production AI observability and tracing
-- **Evalite** - AI evaluation and testing framework
+
+![Langfuse Trace](langfuse_trace.png)
+*Behind the scenes: Langfuse tracing shows exactly how 411 processes queries through its multi-agent system*
+- **Evalite** - AI evaluation and testing framework for comprehensive LLM testing
 
 ### Backend & Data
 
@@ -51,7 +57,7 @@ DeepSearch goes beyond simple search by implementing sophisticated AI agent work
 
    ```bash
    git clone <repository-url>
-   cd deep-research
+   cd 01-day-1-app
    pnpm install
    ```
 
@@ -89,13 +95,13 @@ DeepSearch goes beyond simple search by implementing sophisticated AI agent work
 
 ### AI Agent Workflow
 
-The system implements a sophisticated multi-agent architecture with intelligent decision-making, parallel processing, and comprehensive state management. Here's the detailed workflow:
+411 runs on a sophisticated multi-agent system that's basically like having a whole squad of researchers working together. Here's how your digital bestie gets you the answers:
 
 ![411 Agent Loop](411_loop.svg)
 
-_The 411 Agent Loop - A sophisticated multi-step research workflow that iteratively refines and expands search queries to deliver comprehensive answers._
+_The 411 Loop - Your AI bestie's process for digging up all the tea and serving it piping hot with receipts._
 
-#### Phase 1: Input Processing & Safety Pipeline
+#### Phase 1: "Wait, Let Me Make Sure I Got That Right"
 
 **Content Safety Guardrails** (`src/guardrails.ts`)
 
@@ -122,7 +128,10 @@ const result = await generateObject({
 - Context-aware analysis considering conversation history
 - Proactive clarification requests to improve research quality
 
-#### Phase 2: Agent Loop Architecture
+![Clarification Question](clarifying_question.png)
+*411 asking for clarification when a question is too vague - because even your bestie needs context sometimes*
+
+#### Phase 2: "Okay, Time To Do Some Digging"
 
 **Dynamic Action Planning** (`src/deep-search.ts`)
 
@@ -147,7 +156,7 @@ const actionSchema = z.object({
 - Token usage tracking and cost monitoring
 - User location context for geo-aware responses
 
-#### Phase 3: Intelligent Search & Processing
+#### Phase 3: "Let Me Check My Sources"
 
 **Query Optimization** (`src/query-rewriter.ts`)
 
@@ -176,7 +185,7 @@ const summarizationInputs: SummarizeURLInput[] = searchResults.map(
 const summaryResults = await summarizeURLs(summarizationInputs);
 ```
 
-#### Phase 4: Decision Intelligence
+#### Phase 4: "Do I Have The Full Story Yet?"
 
 **Evaluation Criteria Engine**
 
@@ -192,7 +201,7 @@ const summaryResults = await summarizeURLs(summarizationInputs);
 - Force answer after 5 iterations to prevent infinite loops
 - Graceful degradation with partial information acknowledgment
 
-#### Phase 5: Response Generation & Streaming
+#### Phase 5: "Girl, Let Me Tell You What I Found Out"
 
 **Context-Aware Answer Synthesis** (`src/answer-question.ts`)
 
@@ -244,6 +253,84 @@ DECISION GUIDELINES:
 - Memory-efficient context management
 
 This architecture demonstrates enterprise-grade AI agent design with sophisticated decision-making, robust error handling, and production-ready performance optimizations.
+
+## Evaluation Framework
+
+### Making Sure 411 Stays On Point
+
+411 uses [Evalite](https://evalite.dev) to make sure it's always bringing you quality intel, not just random nonsense. Think of it as the friend group that fact-checks before spreading rumors - keeping your AI bestie honest and accurate.
+
+![Evalite Dashboard](evallite_capture.png)
+*The Evalite dashboard showing 411's evaluation metrics - ensuring every answer meets quality standards*
+
+#### Key Features
+
+**Multi-Dimensional Scoring**
+- **Factuality**: LLM-as-a-judge comparison against expert answers using advanced prompt engineering
+- **Link Inclusion**: Validates proper source attribution with markdown link detection
+- **Multi-hop Reasoning**: Measures complex reasoning capabilities and step-by-step analysis
+- **Answer Relevancy**: Semantic similarity assessment between queries and responses
+
+**Production-Ready Evaluation Pipeline**
+```bash
+pnpm evals          # Run evaluation suite in watch mode
+```
+
+The evaluation framework includes:
+
+- **Development Dataset** (`evals/dev.ts`) - Core test cases for feature development
+- **CI Dataset** (`evals/ci.ts`) - Automated testing for continuous integration
+- **Regression Dataset** (`evals/regression.ts`) - Historical test cases to prevent regressions
+
+#### Evaluation Metrics
+
+**Factuality Scorer** (`evals/initial.eval.ts`)
+```typescript
+export const checkFactuality = async (opts: {
+  question: string;
+  groundTruth: string;
+  submission: string;
+}) => {
+  const { object } = await generateObject({
+    model: factualityModel,
+    schema: z.object({
+      answer: z.enum(["A", "B", "C", "D", "E"]),
+      rationale: z.string(),
+    }),
+  });
+  
+  // Scoring: A=0.4, B=0.6, C=1.0, D=0.0, E=1.0
+  return { score: scores[object.answer], metadata: { rationale } };
+};
+```
+
+**Custom Scoring Framework**
+- Automated detection of reasoning patterns and logical connections
+- Source attribution validation with regex pattern matching
+- Semantic similarity assessment for answer relevancy
+- Configurable scoring thresholds for different quality standards
+
+#### Dataset Configuration
+
+The evaluation system supports environment-based dataset selection:
+- `EVAL_DATASET=dev` - Development testing (default)
+- `EVAL_DATASET=ci` - CI pipeline with extended test coverage
+- `EVAL_DATASET=regression` - Full regression suite with historical cases
+
+#### Integration with Development Workflow
+
+**Live Evaluation During Development**
+```bash
+pnpm evals          # Launches evaluation dashboard on localhost:3006
+```
+
+**Automated Quality Gates**
+- Continuous evaluation during feature development
+- Regression prevention with historical test preservation
+- Performance benchmarking across model updates
+- Quality metrics tracking for production deployment decisions
+
+This testing framework is what makes sure 411 stays that reliable friend who actually knows what they're talking about - not the one who just makes stuff up for attention.
 
 ### Key Components
 

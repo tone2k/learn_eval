@@ -225,10 +225,10 @@ export async function runAgentLoop(
     // Return a clarification response
     const clarificationResponse = streamText({
       model: defaultModel,
-      system: `You are a clarification agent. Provide a helpful clarification request based on the identified issue.`,
+      system: `You're that friend who needs a bit more info before you can get them the good stuff. Be friendly about asking for clarification.`,
       prompt: `The user's question needs clarification for this reason: ${clarificationResult.reason}
 
-Please provide a friendly clarification request that helps the user understand what additional information you need.`,
+Give them a friendly clarification request that helps them understand what additional info you need to get them the best answer.`,
       experimental_telemetry: langfuseTraceId ? {
         isEnabled: true,
         functionId: "clarification-response",

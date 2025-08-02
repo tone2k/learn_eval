@@ -66,7 +66,7 @@ export const ChatPage = ({
     <>
       <div className="flex flex-1 flex-col">
         <div
-          className="mx-auto w-full max-w-[65ch] flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500"
+          className="mx-auto w-full max-w-[65ch] flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-track-pink-200 scrollbar-thumb-pink-400 hover:scrollbar-thumb-pink-500"
           role="log"
           aria-label="Chat messages"
         >
@@ -82,7 +82,7 @@ export const ChatPage = ({
           })}
         </div>
 
-        <div className="border-t border-gray-700">
+        <div className="border-t border-pink-200">
           <form onSubmit={handleSubmit} className="mx-auto max-w-[65ch] p-4">
             <div className="flex gap-2">
               <input
@@ -91,12 +91,12 @@ export const ChatPage = ({
                 placeholder="Say something..."
                 autoFocus
                 aria-label="Chat input"
-                className="flex-1 rounded border border-gray-700 bg-gray-800 p-2 text-gray-200 placeholder-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+                className="flex-1 rounded border border-pink-300 bg-white p-2 text-gray-900 placeholder-gray-500 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-400 disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={isLoading}
-                className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-600 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:hover:bg-gray-700"
+                className="rounded bg-pink-500 px-4 py-2 text-white hover:bg-pink-600 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-400 disabled:opacity-50 disabled:hover:bg-pink-500"
               >
                 {isLoading ? (
                   <Loader2 className="size-4 animate-spin" />

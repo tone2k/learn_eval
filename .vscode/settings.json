@@ -30,5 +30,9 @@
     "**/dist": true,
     "**/.next": true,
     "**/coverage": true
-  }
+  },
+  "cSpell.words": [
+    "Evalite",
+    "evals"
+  ]
 } 

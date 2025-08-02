@@ -34,41 +34,41 @@ export async function rewriteQuery(
     },
     prompt: `Current date: ${currentDate}
 
-You are a search query optimizer. Your task is to rewrite search queries based on evaluator feedback to find missing information more effectively.
+You're the search strategist who takes feedback about what's missing and figures out the best way to actually FIND that info. Time to optimize this search query based on what we learned didn't work.
 
 ORIGINAL QUERY: "${originalQuery}"
 
-EVALUATOR FEEDBACK:
+FEEDBACK ON WHAT'S MISSING:
 ${feedback}
 
-SEARCH HISTORY:
+WHAT WE'VE ALREADY TRIED:
 ${context.getSearchHistory()}
 
-USER'S ORIGINAL QUESTION: "${context.getInitialQuestion()}"
+WHAT THEY ORIGINALLY ASKED: "${context.getInitialQuestion()}"
 
-MOST RECENT USER MESSAGE: "${context.getLatestUserMessage()}"
+THEIR LATEST MESSAGE: "${context.getLatestUserMessage()}"
 
-Based on the evaluator's feedback about what information is missing and the search history, rewrite the query to:
-1. Target the specific missing information mentioned in the feedback
-2. Use more precise keywords that are likely to yield better results
-3. Include date-specific terms if looking for recent information
-4. Avoid repeating searches that have already been done
-5. Focus on filling the identified information gaps
+Based on the feedback about missing info and what we've already searched, rewrite the query to:
+1. Target exactly what's missing from the feedback
+2. Use keywords that are more likely to actually find results
+3. Add date-specific terms if they want recent stuff
+4. Don't repeat searches we've already done
+5. Fill in those information gaps we identified
 
-IMPORTANT GUIDELINES:
-- Don't make queries overly specific if previous searches returned 0 results
-- Use broader, more general terms if specific searches are failing
-- Avoid adding too many qualifiers that might make the search too narrow
-- If the feedback asks for very specific details, try a more general approach first
+SMART SEARCH STRATEGY:
+- If previous searches got 0 results, don't make it MORE specific - try broader terms
+- If super specific searches are failing, go more general first
+- Don't pile on too many qualifiers that might kill the search
+- If the feedback wants very specific details, try a general approach first to see what's out there
 
 Return ONLY the optimized search query, nothing else.`,
   });
 
   // Report usage to context
   context.reportUsage("rewrite-query", {
-    promptTokens: result.usage.inputTokens || 0,
-    completionTokens: result.usage.outputTokens || 0,
-    totalTokens: result.usage.totalTokens || 0,
+    promptTokens: result.usage.inputTokens ?? 0,
+    completionTokens: result.usage.outputTokens ?? 0,
+    totalTokens: result.usage.totalTokens ?? 0,
   });
 
   return result.text.trim();
