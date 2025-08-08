@@ -13,7 +13,7 @@ function transformDatabaseMessageToAISDK(msg: DatabaseMessage): OurMessage {
   // In AI SDK v5, messages use parts instead of content
   // If we have stored parts, use them; otherwise convert content to text part
   let parts: Array<{ type: string; text?: string; [key: string]: unknown }> = [];
-  
+
   if (msg.parts && Array.isArray(msg.parts)) {
     parts = msg.parts;
   } else if (msg.content) {
@@ -60,30 +60,30 @@ export default async function HomePage({
   }
 
   return (
-    <div className="flex h-screen bg-pink-50">
+    <div className="flex h-screen">
       {/* Sidebar */}
-      <div className="flex w-64 flex-col border-r border-pink-200 bg-pink-100">
+      <div className="flex w-72 flex-col border-r border-slate-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-slate-800 dark:bg-slate-900/60">
         <div className="p-4">
           <div className="flex items-center justify-between">
             <AppHeader showSubtitle={false} />
             {isAuthenticated && <NewChatButton />}
           </div>
-          <p className="text-xs text-navy-900 mt-2 ml-11 font-medium">Dig for the truth</p>
+          <p className="text-xs text-slate-500 mt-2 ml-11 font-medium">Dig for the truth</p>
         </div>
-        <div className="-mt-1 flex-1 space-y-2 overflow-y-auto px-4 pt-1 scrollbar-thin scrollbar-track-pink-200 scrollbar-thumb-pink-400">
+        <div className="-mt-1 flex-1 space-y-2 overflow-y-auto px-3 pt-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400 dark:scrollbar-thumb-slate-600 dark:hover:scrollbar-thumb-slate-500">
           {chats.length > 0 ? (
             chats.map((chat) => (
               <div key={chat.id} className="group">
                 <div
-                  className={`flex items-center justify-between rounded-lg p-3 text-left text-sm text-navy-900 border transition-colors ${
+                  className={`flex items-center justify-between rounded-lg p-2 text-left text-sm border transition-colors ${
                     chat.id === activeChatId
-                      ? "bg-pink-200 border-pink-500"
-                      : "hover:bg-pink-50 bg-white border-pink-200 hover:border-pink-300"
+                      ? "bg-indigo-50 border-indigo-200 text-slate-900 dark:bg-indigo-950/40 dark:border-indigo-900/50 dark:text-slate-100"
+                      : "hover:bg-slate-50 bg-white border-slate-200 hover:border-slate-300 dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-800"
                   }`}
                 >
                   <Link
                     href={`/?chatId=${chat.id}`}
-                    className="flex-1 focus:outline-none focus:ring-2 focus:ring-pink-500 rounded"
+                    className="flex-1 truncate focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
                   >
                     {chat.title}
                   </Link>
@@ -97,9 +97,9 @@ export default async function HomePage({
               </div>
             ))
           ) : (
-            <p className="text-sm text-navy-900">
+            <p className="text-sm text-slate-600 dark:text-slate-400 px-2">
               {isAuthenticated
-                ? "No tea to spill yet. Start digging for the real story!"
+                ? "No research threads yet. Start digging for the real story!"
                 : "Sign in to get the inside scoop"}
             </p>
           )}

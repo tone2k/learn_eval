@@ -11,22 +11,22 @@ interface ChatMessageProps {
 const components: Components = {
   // Override default elements with custom styling
   p: ({ children }) => <p className="mb-4 first:mt-0 last:mb-0">{children}</p>,
-  ul: ({ children }) => <ul className="mb-4 list-disc pl-4">{children}</ul>,
-  ol: ({ children }) => <ol className="mb-4 list-decimal pl-4">{children}</ol>,
+  ul: ({ children }) => <ul className="mb-4 list-disc pl-5">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-4 list-decimal pl-5">{children}</ol>,
   li: ({ children }) => <li className="mb-1">{children}</li>,
   code: ({ className, children, ...props }) => (
-    <code className={`${className ?? ""}`} {...props}>
+    <code className={`${className ?? ""} rounded bg-slate-100 px-1 py-0.5 text-sm dark:bg-slate-800`} {...props}>
       {children}
     </code>
   ),
   pre: ({ children }) => (
-    <pre className="mb-4 overflow-x-auto rounded-lg bg-gray-100 border border-gray-200 p-4">
+    <pre className="mb-4 overflow-x-auto rounded-lg bg-slate-100 border border-slate-200 p-4 dark:bg-slate-900 dark:border-slate-800">
       {children}
     </pre>
   ),
   a: ({ children, ...props }) => (
     <a
-      className="text-pink-600 underline hover:text-pink-700"
+      className="text-indigo-600 underline hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
       target="_blank"
       rel="noopener noreferrer"
       {...props}
@@ -72,12 +72,12 @@ export const ChatMessage = ({
   return (
     <div className="mb-6">
       <div
-        className={`rounded-lg p-4 border ${isAI 
-          ? "bg-white border-pink-200 text-gray-800" 
-          : "bg-pink-50 border-pink-300 text-gray-900"
+        className={`rounded-2xl p-4 md:p-5 border ${isAI 
+          ? "bg-white/90 border-slate-200 text-slate-800 shadow-sm dark:bg-slate-900/70 dark:border-slate-800 dark:text-slate-100" 
+          : "bg-indigo-50 border-indigo-200 text-slate-900 dark:bg-indigo-950/40 dark:border-indigo-900/50 dark:text-slate-100"
         }`}
       >
-        <p className="mb-2 text-sm font-semibold text-gray-500">
+        <p className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
           {isAI ? "AI" : userName}
         </p>
 
@@ -88,7 +88,7 @@ export const ChatMessage = ({
 
         {/* Show text content from data-text parts */}
         {textParts.length > 0 && (
-          <div className="prose max-w-none">
+          <div className="prose max-w-none dark:prose-invert">
             {textParts.map((part, index) => (
               <Markdown key={index}>{part.data.content}</Markdown>
             ))}
@@ -97,7 +97,7 @@ export const ChatMessage = ({
 
         {/* Only show main content if there are no clarification parts and no text parts */}
         {clarificationParts.length === 0 && textParts.length === 0 && (
-          <div className="prose max-w-none">
+          <div className="prose max-w-none dark:prose-invert">
             {parts && parts.length > 0 ? (
               // Render message parts for tool calls and other structured content
               parts.map((part, index: number) => {
@@ -115,11 +115,11 @@ export const ChatMessage = ({
                   return <Markdown key={index}>{part.text}</Markdown>;
                 } else if (part.type === "tool-invocation") {
                   return (
-                    <div key={index} className="mb-2 rounded bg-pink-100 border border-pink-200 p-2">
-                      <p className="text-sm text-gray-600">
+                    <div key={index} className="mb-2 rounded border border-slate-200 bg-slate-50 p-2 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                      <p className="text-sm">
                         🔧 Using tool: {part.toolInvocation.toolName}
                       </p>
-                      <pre className="mt-1 text-xs text-gray-500">
+                      <pre className="mt-1 overflow-auto text-xs">
                         {JSON.stringify(part.toolInvocation.args, null, 2)}
                       </pre>
                     </div>
@@ -131,7 +131,7 @@ export const ChatMessage = ({
             ) : (
               // Only show empty state for messages without any parts
               isAI && actionParts.length === 0 && sourcesParts.length === 0 && clarificationParts.length === 0 ? (
-                <p className="text-gray-600">No content</p>
+                <p className="text-slate-600 dark:text-slate-300">No content</p>
               ) : null
             )}
           </div>
@@ -139,7 +139,7 @@ export const ChatMessage = ({
 
         {/* Show token usage for AI messages */}
         {isAI && usagePart && (
-          <div className="mb-2 text-xs text-gray-500">
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
             Tokens used: {usagePart.data.totalTokens.toLocaleString()}
           </div>
         )}

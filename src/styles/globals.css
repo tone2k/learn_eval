@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Base app theming */
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased;
+}
+
+::selection {
+  background: #c7d2fe; /* indigo-200 */
+  color: #1e293b;      /* slate-800 */
+}
+
+/***** Utilities *****/
+/ * Thin scrollbars to match the app aesthetic */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
