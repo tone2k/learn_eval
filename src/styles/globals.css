@@ -17,7 +17,7 @@ body {
 }
 
 /***** Utilities *****/
-/ * Thin scrollbars to match the app aesthetic */
+/* Thin scrollbars to match the app aesthetic */
 .scrollbar-thin {
   scrollbar-width: thin;
 }
