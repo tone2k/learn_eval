@@ -13,10 +13,10 @@ export const NewChatButton = () => {
   return (
     <button
       onClick={handleNewChat}
-      className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-navy-900 hover:bg-pink-50 hover:text-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 border border-pink-200 hover:border-pink-400 transition-colors"
+      className="flex size-9 items-center justify-center rounded-lg glass-card text-gray-400 hover:text-white hover:border-accent/40 hover:shadow-md hover:shadow-accent/20 focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
       title="New Research"
     >
-      <PlusIcon className="h-5 w-5" />
+      <PlusIcon className="size-4" />
     </button>
   );
 };

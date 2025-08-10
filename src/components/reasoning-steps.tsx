@@ -11,18 +11,18 @@ const components: Components = {
   ol: ({ children }) => <ol className="mb-2 list-decimal pl-4">{children}</ol>,
   li: ({ children }) => <li className="mb-1">{children}</li>,
   code: ({ className, children, ...props }) => (
-    <code className={`${className ?? ""} rounded bg-gray-600 px-1 py-0.5 text-sm`} {...props}>
+    <code className={`${className ?? ""} rounded bg-white/10 px-1 py-0.5 text-sm text-accent-light`} {...props}>
       {children}
     </code>
   ),
   pre: ({ children }) => (
-    <pre className="mb-2 overflow-x-auto rounded bg-gray-600 p-2 text-sm">
+    <pre className="mb-2 overflow-x-auto rounded-lg bg-black/30 border border-white/10 p-3 text-sm">
       {children}
     </pre>
   ),
   a: ({ children, ...props }) => (
     <a
-      className="text-blue-400 underline"
+      className="text-accent hover:text-accent-light underline transition-colors"
       target="_blank"
       rel="noopener noreferrer"
       {...props}
@@ -38,9 +38,9 @@ const Markdown = ({ children }: { children: string }) => {
 
 const Sources = ({ sources }: { sources: SearchSource[] }) => {
   return (
-    <div className="mt-2">
-      <div className="text-xs text-gray-500 mb-2">
-        Found {sources.length} sources • Click to open
+    <div className="mt-3">
+      <div className="text-xs text-gray-400 mb-3 font-medium">
+        🔍 Found {sources.length} sources • Click to explore
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {sources.map((source, index) => (
@@ -49,7 +49,7 @@ const Sources = ({ sources }: { sources: SearchSource[] }) => {
             href={source.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-start gap-2 rounded border border-gray-700 bg-gray-800 p-2 hover:bg-gray-700 transition-colors"
+            className="flex items-start gap-3 rounded-lg glass-card p-3 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-accent/10"
           >
             {source.favicon && (
               <img
@@ -62,10 +62,10 @@ const Sources = ({ sources }: { sources: SearchSource[] }) => {
               />
             )}
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-200 line-clamp-1">
+              <div className="text-sm font-medium text-white line-clamp-1">
                 {source.title}
               </div>
-              <div className="mt-0.5 text-xs text-gray-400 line-clamp-1">
+              <div className="mt-1 text-xs text-gray-400 line-clamp-2">
                 {source.snippet}
               </div>
             </div>
@@ -87,24 +87,24 @@ export const ReasoningSteps = ({
 
   return (
     <div className="mb-4 w-full">
-      <ul className="space-y-1">
+      <ul className="space-y-2">
         {parts.map((part, index) => {
           const isOpen = openStep === index;
           return (
             <li key={index} className="relative">
               <button
                 onClick={() => setOpenStep(isOpen ? null : index)}
-                className={`min-w-34 flex w-full flex-shrink-0 items-center rounded px-2 py-1 text-left text-sm transition-colors ${
+                className={`min-w-34 flex w-full flex-shrink-0 items-center rounded-lg px-3 py-2 text-left text-sm transition-all ${
                   isOpen
-                    ? "bg-gray-700 text-gray-200"
-                    : "text-gray-400 hover:bg-gray-800 hover:text-gray-300"
+                    ? "bg-gradient-to-r from-accent/20 to-primary-600/20 border border-accent/40 shadow-md"
+                    : "glass-card hover:border-white/20 text-gray-400 hover:text-white"
                 }`}
               >
                 <span
-                  className={`z-10 mr-3 flex size-6 flex-shrink-0 items-center justify-center rounded-full border-2 border-gray-500 text-xs font-bold ${
+                  className={`z-10 mr-3 flex size-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${
                     isOpen
-                      ? "border-blue-400 text-white"
-                      : "bg-gray-800 text-gray-300"
+                      ? "bg-accent text-white shadow-lg shadow-accent/30"
+                      : "bg-white/10 text-gray-300 border border-white/20"
                   }`}
                 >
                   {part.type === "data-newAction" && part.data.step ? part.data.step : index + 1}
@@ -119,31 +119,33 @@ export const ReasoningSteps = ({
                           : "Clarification"}
                     </span>
                     {part.type === "data-newAction" && part.data.step && part.data.maxSteps && (
-                      <span className="text-xs text-gray-500 ml-2">
+                      <span className="text-xs text-gray-400 ml-2 opacity-75">
                         Step {part.data.step}/{part.data.maxSteps}
                       </span>
                     )}
                   </div>
                 </div>
               </button>
-              <div className={`${isOpen ? "mt-1" : "hidden"}`}>
+              <div className={`${isOpen ? "mt-2" : "hidden"}`}>
                 {isOpen && (
-                  <div className="px-2 py-1">
+                  <div className="px-3 py-2 rounded-lg bg-black/20 border border-white/5">
                     {part.type === "data-newAction" ? (
                       <>
-                        <div className="text-sm italic text-gray-400">
+                        <div className="text-sm italic text-gray-300">
                           <Markdown>{part.data.reasoning}</Markdown>
                         </div>
                         {part.data.type === "continue" && (
-                          <div className="mt-2 flex flex-col gap-2 text-sm text-gray-400">
-                            <div className="flex items-center gap-2">
-                              <SearchIcon className="size-4" />
-                              <span>Continuing search...</span>
+                          <div className="mt-3 flex flex-col gap-2 text-sm">
+                            <div className="flex items-center gap-2 text-primary-400">
+                              <SearchIcon className="size-4 animate-pulse" />
+                              <span>Expanding search...</span>
                             </div>
                             {part.data.feedback && (
-                              <div className="mt-2 border-l-2 border-gray-700 pl-4">
-                                <div className="font-medium text-gray-300">Feedback:</div>
-                                <Markdown>{part.data.feedback}</Markdown>
+                              <div className="mt-2 border-l-2 border-accent/30 pl-4">
+                                <div className="font-medium text-accent-light mb-1">Insight:</div>
+                                <div className="text-gray-300">
+                                  <Markdown>{part.data.feedback}</Markdown>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -152,12 +154,12 @@ export const ReasoningSteps = ({
                     ) : part.type === "data-sources" ? (
                       <Sources sources={part.data} />
                     ) : part.type === "data-clarification" ? (
-                      <div className="text-sm text-gray-400">
-                        <div className="mb-2 italic">
+                      <div className="text-sm">
+                        <div className="mb-3 italic text-gray-300">
                           <Markdown>{part.data.reasoning}</Markdown>
                         </div>
-                        <div className="font-medium text-orange-400">
-                          I need more information to help you effectively.
+                        <div className="font-medium text-amber-400">
+                          ℹ️ I need more information to help you effectively.
                         </div>
                       </div>
                     ) : null}

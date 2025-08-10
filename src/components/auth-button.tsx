@@ -14,22 +14,25 @@ export function AuthButton({ isAuthenticated, userImage }: AuthButtonProps) {
   const router = useRouter();
 
   return isAuthenticated ? (
-    <div className="hover:bg-pink-100 flex items-center gap-2 rounded-lg bg-white p-2 text-navy-900 border border-pink-200">
+    <div className="glass-card flex items-center gap-3 rounded-xl p-3 transition-all hover:border-white/20">
       {userImage && (
-        <Image
-          src={userImage}
-          alt="User avatar"
-          width={32}
-          height={32}
-          className="rounded-full"
-        />
+        <div className="relative">
+          <div className="absolute inset-0 bg-accent rounded-full blur-md opacity-30"></div>
+          <Image
+            src={userImage}
+            alt="User avatar"
+            width={32}
+            height={32}
+            className="rounded-full relative border border-white/20"
+          />
+        </div>
       )}
       <button
         onClick={() => {
           router.push("/");
           void signOut();
         }}
-        className="flex w-full items-center justify-center p-1 text-sm text-navy-900 font-medium focus:outline-none focus:ring-2 focus:ring-pink-500"
+        className="flex w-full items-center justify-center text-sm text-gray-300 font-light hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50 rounded-lg"
       >
         Sign out
       </button>
@@ -37,12 +40,12 @@ export function AuthButton({ isAuthenticated, userImage }: AuthButtonProps) {
   ) : (
     <button
       onClick={() => void signIn("discord")}
-      className="hover:bg-pink-100 flex w-full items-center justify-center gap-2 rounded-lg bg-white p-3 text-sm text-navy-900 font-medium focus:outline-none focus:ring-2 focus:ring-pink-500 border border-pink-200"
+      className="button-gradient flex w-full items-center justify-center gap-2 rounded-xl p-3 text-sm text-white font-medium shadow-lg transition-all hover:shadow-accent/30 focus:outline-none focus:ring-2 focus:ring-accent/50"
     >
       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
         <path d={siDiscord.path} />
       </svg>
-      Sign in
+      Sign in with Discord
     </button>
   );
 }

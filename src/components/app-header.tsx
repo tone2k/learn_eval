@@ -11,20 +11,25 @@ export const AppHeader = ({
   showSubtitle = true, 
   className = "" 
 }: AppHeaderProps) => {
-  const logoSize = size === "large" ? 160 : 96;
+  const logoSize = size === "large" ? 160 : 40;
   const subtitleSize = size === "large" ? "text-sm" : "text-xs";
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <Image 
-        src="/logo.png" 
-        alt="411 logo" 
-        width={logoSize} 
-        height={logoSize}
-        className="rounded flex-shrink-0"
-        priority
-      />
-      {showSubtitle}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-accent to-primary-500 rounded-lg blur-md opacity-50"></div>
+        <Image 
+          src="/logo.png" 
+          alt="411 logo" 
+          width={logoSize} 
+          height={logoSize}
+          className="rounded-lg flex-shrink-0 relative shadow-xl"
+          priority
+        />
+      </div>
+      {showSubtitle && (
+        <span className={`${subtitleSize} text-gray-400 font-light`}>Deep Research</span>
+      )}
     </div>
   );
 };

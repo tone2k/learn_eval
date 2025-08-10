@@ -60,30 +60,30 @@ export default async function HomePage({
   }
 
   return (
-    <div className="flex h-screen bg-pink-50">
+    <div className="flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-primary-950">
       {/* Sidebar */}
-      <div className="flex w-64 flex-col border-r border-pink-200 bg-pink-100">
-        <div className="p-4">
-          <div className="flex items-center justify-between">
+      <div className="flex w-72 flex-col border-r border-white/10 bg-black/40 backdrop-blur-xl">
+        <div className="p-6 border-b border-white/10">
+          <div className="flex items-center justify-between mb-2">
             <AppHeader showSubtitle={false} />
             {isAuthenticated && <NewChatButton />}
           </div>
-          <p className="text-xs text-navy-900 mt-2 ml-11 font-medium">Dig for the truth</p>
+          <p className="text-xs text-gray-400 ml-12 font-light tracking-wide">Advanced AI Research</p>
         </div>
-        <div className="-mt-1 flex-1 space-y-2 overflow-y-auto px-4 pt-1 scrollbar-thin scrollbar-track-pink-200 scrollbar-thumb-pink-400">
+        <div className="flex-1 space-y-2 overflow-y-auto p-4 scrollbar-custom">
           {chats.length > 0 ? (
             chats.map((chat) => (
               <div key={chat.id} className="group">
                 <div
-                  className={`flex items-center justify-between rounded-lg p-3 text-left text-sm text-navy-900 border transition-colors ${
+                  className={`flex items-center justify-between rounded-xl p-3.5 text-left text-sm transition-all duration-200 ${
                     chat.id === activeChatId
-                      ? "bg-pink-200 border-pink-500"
-                      : "hover:bg-pink-50 bg-white border-pink-200 hover:border-pink-300"
+                      ? "bg-gradient-to-r from-accent/20 to-primary-600/20 border border-accent/40 shadow-lg shadow-accent/20"
+                      : "glass-card glass-card-hover text-gray-300 hover:text-white"
                   }`}
                 >
                   <Link
                     href={`/?chatId=${chat.id}`}
-                    className="flex-1 focus:outline-none focus:ring-2 focus:ring-pink-500 rounded"
+                    className="flex-1 truncate focus:outline-none focus:ring-2 focus:ring-accent rounded-lg transition-colors"
                   >
                     {chat.title}
                   </Link>
@@ -97,14 +97,14 @@ export default async function HomePage({
               </div>
             ))
           ) : (
-            <p className="text-sm text-navy-900">
+            <p className="text-sm text-gray-400 text-center py-8">
               {isAuthenticated
-                ? "No tea to spill yet. Start digging for the real story!"
-                : "Sign in to get the inside scoop"}
+                ? "No research sessions yet. Start your deep investigation."
+                : "Sign in to begin researching"}
             </p>
           )}
         </div>
-        <div className="p-4">
+        <div className="p-4 border-t border-white/10">
           <AuthButton
             isAuthenticated={isAuthenticated}
             userImage={session?.user?.image}

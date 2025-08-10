@@ -77,21 +77,21 @@ export const DeleteChatButton = ({ chatId, isActiveChatId }: DeleteChatButtonPro
       <button
         onClick={handleClick}
         disabled={isDeleting}
-        className={`flex items-center justify-center rounded p-1 transition-colors ${
+        className={`flex items-center justify-center rounded-lg p-1.5 transition-all ${
           showConfirm 
-            ? "bg-red-600 text-white" 
-            : "text-navy-600 hover:bg-pink-100 hover:text-pink-600"
+            ? "bg-red-500/20 text-red-400 border border-red-500/40" 
+            : "text-gray-400 hover:text-red-400 hover:bg-red-500/10"
         } ${isDeleting ? "opacity-50 cursor-not-allowed" : ""}`}
         title={showConfirm ? "Click again to confirm deletion" : "Delete chat"}
       >
-        <Trash2 className="size-4" />
+        <Trash2 className="size-3.5" />
       </button>
       
       {showConfirm && (
-        <div className="absolute right-0 top-8 z-10 w-48 rounded bg-white border border-pink-200 p-2 shadow-lg">
-          <p className="text-xs text-navy-900 font-medium mb-2">Delete this chat?</p>
+        <div className="absolute right-0 top-8 z-10 w-48 rounded-xl glass-card p-3 shadow-xl animate-slide-up">
+          <p className="text-xs text-gray-300 font-medium mb-2">Delete this chat?</p>
           {error && (
-            <p className="text-xs text-red-600 mb-2">{error}</p>
+            <p className="text-xs text-red-400 mb-2">{error}</p>
           )}
           <div className="flex gap-2">
             <button
@@ -100,7 +100,7 @@ export const DeleteChatButton = ({ chatId, isActiveChatId }: DeleteChatButtonPro
                 void handleDelete();
               }}
               disabled={isDeleting}
-              className="flex-1 rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-red-500/20 border border-red-500/40 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/30 disabled:opacity-50 transition-all"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </button>
@@ -110,7 +110,7 @@ export const DeleteChatButton = ({ chatId, isActiveChatId }: DeleteChatButtonPro
                 handleCancel();
               }}
               disabled={isDeleting}
-              className="flex-1 rounded bg-pink-600 px-2 py-1 text-xs text-white hover:bg-pink-700 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-white/10 border border-white/20 px-2 py-1.5 text-xs text-gray-300 hover:bg-white/20 disabled:opacity-50 transition-all"
             >
               Cancel
             </button>
